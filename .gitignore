@@ -32,3 +32,5 @@ local
 
 .idea
 __debug*
+
+build.log

@@ -3,12 +3,7 @@ version: "3.8"
 services:
   # ========== PandaWiki 主服务 (单镜像) ==========
   panda-wiki:
-    image: panda-wiki:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        VERSION: latest
+    image: ghcr.io/baiqiqingshu/panda-wiki:latest
     container_name: panda-wiki
     restart: unless-stopped
     ports:
