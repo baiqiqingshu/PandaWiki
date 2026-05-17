@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	"github.com/chaitin/panda-wiki/config"
 	"github.com/chaitin/panda-wiki/domain"
