@@ -7,7 +7,8 @@ services:
     container_name: panda-wiki
     restart: unless-stopped
     ports:
-      - "${WIKI_PORT:-8005}:80"
+      - "${ADMIN_PORT:-8900}:80"
+      - "${WIKI_SITE_PORT:-8005}:${WIKI_SITE_PORT:-8005}"
     environment:
       # PostgreSQL
       - PG_DSN=host=panda-wiki-postgres user=panda-wiki password=${POSTGRES_PASSWORD:-panda-wiki-secret} dbname=panda-wiki port=5432 sslmode=disable TimeZone=Asia/Shanghai

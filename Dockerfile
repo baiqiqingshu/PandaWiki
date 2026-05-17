@@ -43,6 +43,9 @@ COPY web/admin/ ./admin/
 COPY web/app/ ./app/
 COPY web/prettier.config.js web/tsconfig.base.json ./
 
+# 单镜像模式: Next.js SSR 连接同容器内的 API
+RUN echo 'TARGET=http://127.0.0.1:8000' > ./app/.env
+
 # 并行构建 admin 和 app
 RUN pnpm --parallel --filter panda-wiki-admin --filter panda-wiki-app build
 
@@ -77,6 +80,9 @@ COPY --from=web-builder /web/app/dist/static /app/next-app/app/dist/static
 COPY deploy/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
 
+# --- Wiki 前台站点 Nginx 模板 ---
+COPY deploy/nginx/wiki-site.conf.template /app/wiki-site.conf.template
+
 # --- SSL 证书目录 (运行时生成) ---
 RUN mkdir -p /etc/nginx/ssl
 
@@ -91,6 +97,6 @@ ENV NODE_ENV=production
 ENV PORT=3010
 ENV HOSTNAME=0.0.0.0
 
-EXPOSE 80
+EXPOSE 80 8005
 
 ENTRYPOINT ["/app/entrypoint.sh"]
