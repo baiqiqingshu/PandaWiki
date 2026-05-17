@@ -203,6 +203,8 @@ func createApp() (*App, error) {
 		Config:        configConfig,
 		Logger:        logger,
 		Telemetry:     client,
+		DB:            db,
+		RAGService:    ragService,
 	}
 	return app, nil
 }
@@ -216,4 +218,6 @@ type App struct {
 	Config        *config.Config
 	Logger        *log.Logger
 	Telemetry     *telemetry.Client
+	DB            *pg.DB
+	RAGService    rag.RAGService
 }

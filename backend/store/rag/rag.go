@@ -65,7 +65,15 @@ type RAGService interface {
 func NewRAGService(config *config.Config, logger *log.Logger) (RAGService, error) {
 	switch config.RAG.Provider {
 	case "ct":
+		// 如果 BaseURL 为空，降级为 NoopRAG
+		if config.RAG.CTRAG.BaseURL == "" {
+			logger.Info("RAG CT BaseURL is empty, falling back to NoopRAG")
+			return NewNoopRAG(logger), nil
+		}
 		return NewCTRAG(config, logger)
+	case "noop", "":
+		logger.Info("Using NoopRAG (RAG not configured)")
+		return NewNoopRAG(logger), nil
 	default:
 		return nil, fmt.Errorf("unsupported vector provider: %s", config.RAG.Provider)
 	}

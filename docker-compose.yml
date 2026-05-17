@@ -7,7 +7,7 @@ services:
     container_name: panda-wiki
     restart: unless-stopped
     ports:
-      - "${WIKI_PORT:-8900}:80"
+      - "${WIKI_PORT:-8005}:80"
     environment:
       # PostgreSQL
       - PG_DSN=host=panda-wiki-postgres user=panda-wiki password=${POSTGRES_PASSWORD:-panda-wiki-secret} dbname=panda-wiki port=5432 sslmode=disable TimeZone=Asia/Shanghai
@@ -27,6 +27,11 @@ services:
       - CADDY_API=
       # Sentry (禁用)
       - SENTRY_ENABLED=false
+      # RAG Provider (noop=无RAG服务, ct=CT RAG)
+      - RAG_PROVIDER=${RAG_PROVIDER:-noop}
+      # Wiki 站点自动初始化
+      - WIKI_NAME=${WIKI_NAME:-PandaWiki}
+      - WIKI_SITE_PORT=${WIKI_SITE_PORT:-8005}
       # 日志级别 (-4=debug, 0=info, 4=warn, 8=error)
       - LOG_LEVEL=${LOG_LEVEL:-0}
     depends_on:

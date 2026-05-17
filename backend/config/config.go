@@ -21,6 +21,8 @@ type Config struct {
 	Sentry        SentryConfig `mapstructure:"sentry"`
 	CaddyAPI      string       `mapstructure:"caddy_api"`
 	SubnetPrefix  string       `mapstructure:"subnet_prefix"`
+	WikiName      string       `mapstructure:"wiki_name"`
+	WikiSitePort  int          `mapstructure:"wiki_site_port"`
 }
 
 type LogConfig struct {
@@ -222,6 +224,19 @@ func overrideWithEnv(c *Config) {
 			c.Log.Level = i
 		} else {
 			fmt.Fprintf(os.Stderr, "Invalid log level: %s with err: %s\n", env, err)
+		}
+	}
+	// rag provider
+	if env := os.Getenv("RAG_PROVIDER"); env != "" {
+		c.RAG.Provider = env
+	}
+	// wiki 站点自动初始化
+	if env := os.Getenv("WIKI_NAME"); env != "" {
+		c.WikiName = env
+	}
+	if env := os.Getenv("WIKI_SITE_PORT"); env != "" {
+		if i, err := strconv.Atoi(env); err == nil {
+			c.WikiSitePort = i
 		}
 	}
 }

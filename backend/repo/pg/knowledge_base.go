@@ -55,6 +55,10 @@ func NewKnowledgeBaseRepository(db *pg.DB, config *config.Config, logger *log.Lo
 }
 
 func (r *KnowledgeBaseRepository) SyncKBAccessSettingsToCaddy(ctx context.Context, kbList []*domain.KnowledgeBaseListItem) error {
+	// 单镜像模式不使用 Caddy，跳过同步
+	if r.config.CaddyAPI == "" {
+		return nil
+	}
 	if len(kbList) == 0 {
 		return nil
 	}
