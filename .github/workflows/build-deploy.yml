@@ -88,7 +88,6 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            set -e
             cd /opt/PandaWiki
 
             # 写入 .env 配置
@@ -96,12 +95,18 @@ jobs:
             ${{ secrets.ENV_FILE }}
             ENVEOF
 
-            # 登录 GHCR
-            echo "${{ secrets.GH_PAT }}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
+            # 登录 GHCR（GH_PAT 未配置时跳过，适用于 public 镜像）
+            GH_PAT="${{ secrets.GH_PAT }}"
+            if [ -n "$GH_PAT" ]; then
+              echo "$GH_PAT" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
+            else
+              echo "GH_PAT not set, skipping GHCR login (public images only)"
+            fi
 
             # 拉取镜像并启动
             docker compose pull
             docker compose up -d
             echo "=== 部署完成 ==="
             docker compose ps
+
 
