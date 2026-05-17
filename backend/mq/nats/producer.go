@@ -30,6 +30,14 @@ func (p *MQProducer) EnsureStreams() error {
 			name:     "scraper",
 			subjects: []string{"apps.panda-wiki.scraper.>"},
 		},
+		{
+			name:     "raglite",
+			subjects: []string{"raglite.events.>"},
+		},
+		{
+			name:     "anydoc",
+			subjects: []string{"anydoc.persistence.>"},
+		},
 	}
 
 	for _, stream := range streams {
