@@ -72,6 +72,10 @@ const CreateWikiModal = () => {
         .then(() => {
           setActiveStep(prev => prev + 1);
         })
+        .catch(() => {
+          // 模型配置为可选，即使失败也进入下一步
+          setActiveStep(prev => prev + 1);
+        })
         .finally(() => {
           setLoading(false);
         });

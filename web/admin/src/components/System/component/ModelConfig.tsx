@@ -570,14 +570,11 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
                         px: 1,
                         lineHeight: '20px',
                         borderRadius: '10px',
-                        bgcolor: addOpacityToColor(
-                          theme.palette.primary.main,
-                          0.1,
-                        ),
-                        color: 'primary.main',
+                        bgcolor: theme.palette.divider,
+                        color: 'text.tertiary',
                       }}
                     >
-                      必选
+                      可选
                     </Box>
                   </Stack>
                   <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
@@ -613,51 +610,21 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
                       状态正常
                     </Box>
                   ) : (
-                    <Stack direction={'row'} alignItems={'center'} gap={1}>
-                      <Box
-                        sx={{
-                          fontSize: 12,
-                          px: 1,
-                          lineHeight: '20px',
-                          borderRadius: '10px',
-                          bgcolor: addOpacityToColor(
-                            theme.palette.error.main,
-                            0.1,
-                          ),
-                          color: 'error.main',
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0,
-                        }}
-                      >
-                        必填配置
-                      </Box>
-                      {!hideDocumentationHint && (
-                        <>
-                          <Stack
-                            alignItems={'center'}
-                            justifyContent={'center'}
-                            sx={{ width: 22, height: 22, cursor: 'pointer' }}
-                          >
-                            <LottieIcon
-                              id='warning'
-                              src={ErrorJSON}
-                              style={{ width: 20, height: 20 }}
-                            />
-                          </Stack>
-                          <Box sx={{ color: 'error.main', fontSize: 12 }}>
-                            未配置无法使用，如果没有可用模型，可参考&nbsp;
-                            <Box
-                              component={'a'}
-                              sx={{ color: 'primary.main', cursor: 'pointer' }}
-                              href='https://pandawiki.docs.baizhi.cloud/node/01973ffe-e1bc-7165-9a71-e7aa461c05ea'
-                              target='_blank'
-                            >
-                              文档
-                            </Box>
-                          </Box>
-                        </>
-                      )}
-                    </Stack>
+                    <Box
+                      sx={{
+                        display: 'inline-block',
+                        fontSize: 12,
+                        px: 1,
+                        lineHeight: '20px',
+                        borderRadius: '10px',
+                        bgcolor: theme.palette.divider,
+                        color: 'text.tertiary',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}
+                    >
+                      可选配置
+                    </Box>
                   )}
                 </Box>
                 <Button
@@ -777,14 +744,11 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
                         px: 1,
                         lineHeight: '20px',
                         borderRadius: '10px',
-                        bgcolor: addOpacityToColor(
-                          theme.palette.primary.main,
-                          0.1,
-                        ),
-                        color: 'primary.main',
+                        bgcolor: theme.palette.divider,
+                        color: 'text.tertiary',
                       }}
                     >
-                      必选
+                      可选
                     </Box>
                   </Stack>
                   <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
@@ -825,51 +789,21 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
                       状态正常
                     </Box>
                   ) : (
-                    <Stack direction={'row'} alignItems={'center'} gap={1}>
-                      <Box
-                        sx={{
-                          fontSize: 12,
-                          px: 1,
-                          lineHeight: '20px',
-                          borderRadius: '10px',
-                          bgcolor: addOpacityToColor(
-                            theme.palette.error.main,
-                            0.1,
-                          ),
-                          color: 'error.main',
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0,
-                        }}
-                      >
-                        必填配置
-                      </Box>
-                      {!hideDocumentationHint && (
-                        <>
-                          <Stack
-                            alignItems={'center'}
-                            justifyContent={'center'}
-                            sx={{ width: 22, height: 22, cursor: 'pointer' }}
-                          >
-                            <LottieIcon
-                              id='warning'
-                              src={ErrorJSON}
-                              style={{ width: 20, height: 20 }}
-                            />
-                          </Stack>
-                          <Box sx={{ color: 'error.main', fontSize: 12 }}>
-                            未配置无法使用，如果没有可用模型，可参考&nbsp;
-                            <Box
-                              component={'a'}
-                              sx={{ color: 'primary.main', cursor: 'pointer' }}
-                              href='https://pandawiki.docs.baizhi.cloud/node/01973ffe-e1bc-7165-9a71-e7aa461c05ea'
-                              target='_blank'
-                            >
-                              文档
-                            </Box>
-                          </Box>
-                        </>
-                      )}
-                    </Stack>
+                    <Box
+                      sx={{
+                        display: 'inline-block',
+                        fontSize: 12,
+                        px: 1,
+                        lineHeight: '20px',
+                        borderRadius: '10px',
+                        bgcolor: theme.palette.divider,
+                        color: 'text.tertiary',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}
+                    >
+                      可选配置
+                    </Box>
                   )}
                 </Box>
                 <Button
@@ -989,14 +923,11 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
                         px: 1,
                         lineHeight: '20px',
                         borderRadius: '10px',
-                        bgcolor: addOpacityToColor(
-                          theme.palette.primary.main,
-                          0.1,
-                        ),
-                        color: 'primary.main',
+                        bgcolor: theme.palette.divider,
+                        color: 'text.tertiary',
                       }}
                     >
-                      必选
+                      可选
                     </Box>
                   </Stack>
                   <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
@@ -1032,51 +963,21 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
                       状态正常
                     </Box>
                   ) : (
-                    <Stack direction={'row'} alignItems={'center'} gap={1}>
-                      <Box
-                        sx={{
-                          fontSize: 12,
-                          px: 1,
-                          lineHeight: '20px',
-                          borderRadius: '10px',
-                          bgcolor: addOpacityToColor(
-                            theme.palette.error.main,
-                            0.1,
-                          ),
-                          color: 'error.main',
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0,
-                        }}
-                      >
-                        必填配置
-                      </Box>
-                      {!hideDocumentationHint && (
-                        <>
-                          <Stack
-                            alignItems={'center'}
-                            justifyContent={'center'}
-                            sx={{ width: 22, height: 22, cursor: 'pointer' }}
-                          >
-                            <LottieIcon
-                              id='warning'
-                              src={ErrorJSON}
-                              style={{ width: 20, height: 20 }}
-                            />
-                          </Stack>
-                          <Box sx={{ color: 'error.main', fontSize: 12 }}>
-                            未配置无法使用，如果没有可用模型，可参考&nbsp;
-                            <Box
-                              component={'a'}
-                              sx={{ color: 'primary.main', cursor: 'pointer' }}
-                              href='https://pandawiki.docs.baizhi.cloud/node/01973ffe-e1bc-7165-9a71-e7aa461c05ea'
-                              target='_blank'
-                            >
-                              文档
-                            </Box>
-                          </Box>
-                        </>
-                      )}
-                    </Stack>
+                    <Box
+                      sx={{
+                        display: 'inline-block',
+                        fontSize: 12,
+                        px: 1,
+                        lineHeight: '20px',
+                        borderRadius: '10px',
+                        bgcolor: theme.palette.divider,
+                        color: 'text.tertiary',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}
+                    >
+                      可选配置
+                    </Box>
                   )}
                 </Box>
                 <Button
@@ -1196,14 +1097,11 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
                         px: 1,
                         lineHeight: '20px',
                         borderRadius: '10px',
-                        bgcolor: addOpacityToColor(
-                          theme.palette.primary.main,
-                          0.1,
-                        ),
-                        color: 'primary.main',
+                        bgcolor: theme.palette.divider,
+                        color: 'text.tertiary',
                       }}
                     >
-                      必选
+                      可选
                     </Box>
                   </Stack>
                   <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
@@ -1239,51 +1137,21 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
                       状态正常
                     </Box>
                   ) : (
-                    <Stack direction={'row'} alignItems={'center'} gap={1}>
-                      <Box
-                        sx={{
-                          fontSize: 12,
-                          px: 1,
-                          lineHeight: '20px',
-                          borderRadius: '10px',
-                          bgcolor: addOpacityToColor(
-                            theme.palette.error.main,
-                            0.1,
-                          ),
-                          color: 'error.main',
-                          whiteSpace: 'nowrap',
-                          flexShrink: 0,
-                        }}
-                      >
-                        必填配置
-                      </Box>
-                      {!hideDocumentationHint && (
-                        <>
-                          <Stack
-                            alignItems={'center'}
-                            justifyContent={'center'}
-                            sx={{ width: 22, height: 22, cursor: 'pointer' }}
-                          >
-                            <LottieIcon
-                              id='warning'
-                              src={ErrorJSON}
-                              style={{ width: 20, height: 20 }}
-                            />
-                          </Stack>
-                          <Box sx={{ color: 'error.main', fontSize: 12 }}>
-                            未配置无法使用，如果没有可用模型，可参考&nbsp;
-                            <Box
-                              component={'a'}
-                              sx={{ color: 'primary.main', cursor: 'pointer' }}
-                              href='https://pandawiki.docs.baizhi.cloud/node/01973ffe-e1bc-7165-9a71-e7aa461c05ea'
-                              target='_blank'
-                            >
-                              文档
-                            </Box>
-                          </Box>
-                        </>
-                      )}
-                    </Stack>
+                    <Box
+                      sx={{
+                        display: 'inline-block',
+                        fontSize: 12,
+                        px: 1,
+                        lineHeight: '20px',
+                        borderRadius: '10px',
+                        bgcolor: theme.palette.divider,
+                        color: 'text.tertiary',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}
+                    >
+                      可选配置
+                    </Box>
                   )}
                 </Box>
                 <Button
