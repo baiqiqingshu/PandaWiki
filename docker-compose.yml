@@ -1,0 +1,127 @@
+version: "3.8"
+
+services:
+  # ========== PandaWiki 主服务 (单镜像) ==========
+  panda-wiki:
+    image: panda-wiki:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: latest
+    container_name: panda-wiki
+    restart: unless-stopped
+    ports:
+      - "${WIKI_PORT:-8900}:80"
+    environment:
+      # PostgreSQL
+      - PG_DSN=host=panda-wiki-postgres user=panda-wiki password=${POSTGRES_PASSWORD:-panda-wiki-secret} dbname=panda-wiki port=5432 sslmode=disable TimeZone=Asia/Shanghai
+      # NATS
+      - MQ_NATS_SERVER=nats://panda-wiki-nats:4222
+      - NATS_PASSWORD=${NATS_PASSWORD:-}
+      # Redis
+      - REDIS_ADDR=panda-wiki-redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      # MinIO / S3
+      - S3_ENDPOINT=panda-wiki-minio:9000
+      - S3_SECRET_KEY=${MINIO_ROOT_PASSWORD:-panda-wiki-secret}
+      # Auth
+      - JWT_SECRET=${JWT_SECRET:-panda-wiki-jwt-secret-change-me}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      # Caddy (单镜像不使用 Caddy)
+      - CADDY_API=
+      # Sentry (禁用)
+      - SENTRY_ENABLED=false
+      # 日志级别 (-4=debug, 0=info, 4=warn, 8=error)
+      - LOG_LEVEL=${LOG_LEVEL:-0}
+    depends_on:
+      panda-wiki-postgres:
+        condition: service_healthy
+      panda-wiki-redis:
+        condition: service_healthy
+      panda-wiki-nats:
+        condition: service_started
+      panda-wiki-minio:
+        condition: service_healthy
+    networks:
+      - panda-wiki-net
+
+  # ========== PostgreSQL ==========
+  panda-wiki-postgres:
+    image: postgres:17-alpine
+    container_name: panda-wiki-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: panda-wiki
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-panda-wiki-secret}
+      POSTGRES_DB: panda-wiki
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U panda-wiki"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - panda-wiki-net
+
+  # ========== Redis ==========
+  panda-wiki-redis:
+    image: redis:8-alpine
+    container_name: panda-wiki-redis
+    restart: unless-stopped
+    command: >
+      sh -c "if [ -n '${REDIS_PASSWORD:-}' ]; then
+        redis-server --requirepass '${REDIS_PASSWORD}';
+      else
+        redis-server;
+      fi"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - panda-wiki-net
+
+  # ========== NATS ==========
+  panda-wiki-nats:
+    image: nats:2-alpine
+    container_name: panda-wiki-nats
+    restart: unless-stopped
+    command: ["--jetstream", "--store_dir=/data"]
+    volumes:
+      - nats-data:/data
+    networks:
+      - panda-wiki-net
+
+  # ========== MinIO ==========
+  panda-wiki-minio:
+    image: minio/minio:latest
+    container_name: panda-wiki-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-s3panda-wiki}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-panda-wiki-secret}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - panda-wiki-net
+
+volumes:
+  pg-data:
+  redis-data:
+  nats-data:
+  minio-data:
+
+networks:
+  panda-wiki-net:
+    driver: bridge

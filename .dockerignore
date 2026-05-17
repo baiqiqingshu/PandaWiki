@@ -1,0 +1,12 @@
+.git
+.github
+.gitmodules
+*.md
+images/
+sdk/
+backend/pro/
+web/admin/node_modules
+web/app/node_modules
+web/packages/*/node_modules
+web/admin/dist
+web/app/dist
