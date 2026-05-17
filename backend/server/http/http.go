@@ -127,7 +127,8 @@ func NewEcho(
 	// License stub for open-source edition (前端请求此接口，开源版返回免费版信息)
 	e.GET("/api/v1/license", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]interface{}{
-			"code": 0,
+			"code":    0,
+			"success": true,
 			"data": map[string]interface{}{
 				"edition": 0, // LicenseEditionFree
 			},
