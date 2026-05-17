@@ -25,6 +25,10 @@ func AutoInitKnowledgeBase(db *pg.DB, ragService rag.RAGService, cfg *config.Con
 	if port == 0 {
 		port = 8005 // 默认端口
 	}
+	host := cfg.WikiHost
+	if host == "" {
+		host = "0.0.0.0" // 默认监听所有
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -62,7 +66,7 @@ func AutoInitKnowledgeBase(db *pg.DB, ragService rag.RAGService, cfg *config.Con
 			DatasetID: datasetID,
 			AccessSettings: domain.AccessSettings{
 				Ports: []int{port},
-				Hosts: []string{"*"}, // 监听所有域名
+				Hosts: []string{host},
 			},
 		}
 		if err := tx.Create(kb).Error; err != nil {

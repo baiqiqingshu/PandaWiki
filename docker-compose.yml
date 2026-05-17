@@ -32,6 +32,7 @@ services:
       # Wiki 站点自动初始化
       - WIKI_NAME=${WIKI_NAME:-PandaWiki}
       - WIKI_SITE_PORT=${WIKI_SITE_PORT:-8005}
+      - WIKI_HOST=${WIKI_HOST:-0.0.0.0}
       # 日志级别 (-4=debug, 0=info, 4=warn, 8=error)
       - LOG_LEVEL=${LOG_LEVEL:-0}
     depends_on:

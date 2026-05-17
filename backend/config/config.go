@@ -23,6 +23,7 @@ type Config struct {
 	SubnetPrefix  string       `mapstructure:"subnet_prefix"`
 	WikiName      string       `mapstructure:"wiki_name"`
 	WikiSitePort  int          `mapstructure:"wiki_site_port"`
+	WikiHost      string       `mapstructure:"wiki_host"`
 }
 
 type LogConfig struct {
@@ -238,6 +239,9 @@ func overrideWithEnv(c *Config) {
 		if i, err := strconv.Atoi(env); err == nil {
 			c.WikiSitePort = i
 		}
+	}
+	if env := os.Getenv("WIKI_HOST"); env != "" {
+		c.WikiHost = env
 	}
 }
 
