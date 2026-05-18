@@ -55,7 +55,7 @@ FROM node:22-alpine AS runtime
 RUN apk update \
     && apk upgrade \
     && apk add --no-cache \
-       ca-certificates tzdata nginx supervisor \
+       ca-certificates tzdata nginx supervisor gettext openssl postgresql-client \
     && update-ca-certificates 2>/dev/null || true \
     && rm -rf /var/cache/apk/* \
     && mkdir -p /var/log/supervisor /app/run
