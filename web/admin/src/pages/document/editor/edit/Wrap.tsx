@@ -32,6 +32,7 @@ import {
 } from 'react-router-dom';
 import { WrapContext } from '..';
 import AIGenerate from './AIGenerate';
+import DocReferenceModal from './DocReferenceModal';
 import FullTextEditor from './FullTextEditor';
 import Header from './Header';
 import Summary from './Summary';
@@ -79,6 +80,7 @@ const Wrap = ({ detail: defaultDetail }: WrapProps) => {
   const [fixedToc, setFixedToc] = useState(!!storageTocOpen);
   const [selectionText, setSelectionText] = useState('');
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
+  const [docReferenceOpen, setDocReferenceOpen] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const initialStateRef = useRef({
@@ -753,7 +755,11 @@ const Wrap = ({ detail: defaultDetail }: WrapProps) => {
           handleExport={handleExport}
         />
         {!isMarkdown && (
-          <Toolbar editorRef={editorRef} handleAiGenerate={handleAiGenerate} />
+          <Toolbar
+            editorRef={editorRef}
+            handleAiGenerate={handleAiGenerate}
+            handleDocReference={() => setDocReferenceOpen(true)}
+          />
         )}
       </Box>
       <Box
@@ -828,6 +834,22 @@ const Wrap = ({ detail: defaultDetail }: WrapProps) => {
         open={showSummary}
         updateDetail={updateDetail}
         onClose={() => setShowSummary(false)}
+      />
+      <DocReferenceModal
+        open={docReferenceOpen}
+        onClose={() => setDocReferenceOpen(false)}
+        onInsert={(nodeId, title) => {
+          if (editorRef.editor) {
+            editorRef.editor
+              .chain()
+              .focus()
+              .insertContent(
+                `<a href="/node/${nodeId}" data-doc-ref="true" target="_self" title="${title}">${title}</a>`,
+              )
+              .run();
+          }
+          setDocReferenceOpen(false);
+        }}
       />
     </>
   );

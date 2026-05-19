@@ -110,31 +110,6 @@ const AuthTypeModal = ({
             <Box sx={{ width: 120, flexShrink: 0 }}>当前版本</Box>
             <Stack direction={'row'} alignItems={'center'} gap={2}>
               <Box sx={{ fontWeight: 700, minWidth: 50 }}>{curVersion}</Box>
-              {latestVersion === `v${curVersion}` ? (
-                <Box sx={{ color: 'text.tertiary', fontSize: 12 }}>
-                  已是最新版本，无需更新
-                </Box>
-              ) : (
-                <Button
-                  size='small'
-                  startIcon={
-                    <Box>
-                      <LottieIcon
-                        id='version'
-                        src={latestVersion === '' ? HelpCenter : IconUpgrade}
-                        style={{ width: 16, height: 16, display: 'flex' }}
-                      />
-                    </Box>
-                  }
-                  onClick={() => {
-                    window.open(
-                      'https://pandawiki.docs.baizhi.cloud/node/01971615-05b8-7924-9af7-15f73784f893',
-                    );
-                  }}
-                >
-                  立即更新
-                </Button>
-              )}
             </Stack>
           </Stack>
           <Stack direction={'row'} alignItems={'center'}>
@@ -157,23 +132,6 @@ const AuthTypeModal = ({
                     onClick={() => setUpdateOpen(true)}
                   >
                     激活授权
-                  </Button>
-                  <Button
-                    size='small'
-                    startIcon={
-                      <Box>
-                        <LottieIcon
-                          id='consult'
-                          src={HelpCenter}
-                          style={{ width: 16, height: 16, display: 'flex' }}
-                        />
-                      </Box>
-                    }
-                    onClick={() => {
-                      window.open('https://baizhi.cloud/consult');
-                    }}
-                  >
-                    商务咨询
                   </Button>
                 </Stack>
               ) : (
@@ -208,23 +166,6 @@ const AuthTypeModal = ({
                     onClick={handleUnbind}
                   >
                     解绑授权
-                  </Button>
-                  <Button
-                    size='small'
-                    startIcon={
-                      <Box>
-                        <LottieIcon
-                          id='consult'
-                          src={HelpCenter}
-                          style={{ width: 16, height: 16, display: 'flex' }}
-                        />
-                      </Box>
-                    }
-                    onClick={() => {
-                      window.open('https://baizhi.cloud/consult');
-                    }}
-                  >
-                    商务咨询
                   </Button>
                 </Stack>
               )}

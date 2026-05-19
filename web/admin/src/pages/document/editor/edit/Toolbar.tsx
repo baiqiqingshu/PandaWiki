@@ -4,13 +4,19 @@ import {
   UseTiptapReturn,
 } from '@ctzhian/tiptap';
 import { Box } from '@mui/material';
+import { IconNeirongguanli } from '@panda-wiki/icons';
 
 interface ToolbarProps {
   editorRef: UseTiptapReturn;
   handleAiGenerate?: () => void;
+  handleDocReference?: () => void;
 }
 
-const Toolbar = ({ editorRef, handleAiGenerate }: ToolbarProps) => {
+const Toolbar = ({
+  editorRef,
+  handleAiGenerate,
+  handleDocReference,
+}: ToolbarProps) => {
   return (
     <Box
       sx={{
@@ -26,6 +32,12 @@ const Toolbar = ({ editorRef, handleAiGenerate }: ToolbarProps) => {
       <EditorToolbar
         editor={editorRef.editor}
         menuInToolbarMore={[
+          {
+            id: 'doc-reference',
+            label: '文档引用',
+            icon: <IconNeirongguanli sx={{ fontSize: '1rem' }} />,
+            onClick: handleDocReference,
+          },
           {
             id: 'ai',
             label: '文本润色',

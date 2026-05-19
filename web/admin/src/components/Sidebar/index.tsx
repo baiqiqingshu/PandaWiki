@@ -19,7 +19,6 @@ import {
   IconDuihualishi1,
   IconChilun,
   IconGroup,
-  IconGithub,
 } from '@panda-wiki/icons';
 
 const MENUS = [
@@ -237,33 +236,7 @@ const Sidebar = () => {
         >
           帮助文档
         </Button>
-        <Button
-          variant='outlined'
-          color='dark'
-          sx={{
-            fontSize: 14,
-            flexShrink: 0,
-            fontWeight: 400,
-            pr: 1.5,
-            pl: 1.5,
-            gap: 0.5,
-            justifyContent: 'flex-start',
-            textTransform: 'none',
-            border: `1px solid ${theme.palette.divider}`,
-            '.MuiButton-startIcon': {
-              mr: '3px',
-            },
-            '&:hover': {
-              color: 'primary.main',
-            },
-          }}
-          startIcon={<IconGithub sx={{ fontSize: '14px !important' }} />}
-          onClick={() =>
-            window.open('https://github.com/chaitin/PandaWiki', '_blank')
-          }
-        >
-          GitHub
-        </Button>
+
         <Button
           variant='outlined'
           color='dark'
