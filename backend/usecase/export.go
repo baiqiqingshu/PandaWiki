@@ -535,7 +535,7 @@ func (u *ExportUsecase) processImportContent(ctx context.Context, content string
 			return match
 		}
 
-		return fmt.Sprintf("http://panda-wiki-minio:9000/static-file/%s", s3Key)
+		return fmt.Sprintf("/static-file/%s", s3Key)
 	})
 
 	return content

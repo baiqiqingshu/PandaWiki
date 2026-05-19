@@ -60,7 +60,7 @@ func (u *FileUsecase) UploadFileGetUrl(ctx context.Context, kbID string, file *m
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("http://panda-wiki-minio:9000/static-file/%s", key), nil
+	return fmt.Sprintf("/static-file/%s", key), nil
 }
 
 func (u *FileUsecase) UploadFile(ctx context.Context, kbID string, file *multipart.FileHeader) (string, error) {
