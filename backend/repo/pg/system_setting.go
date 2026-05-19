@@ -34,3 +34,19 @@ func (r *SystemSettingRepo) GetSystemSetting(ctx context.Context, key consts.Sys
 func (r *SystemSettingRepo) UpdateSystemSetting(ctx context.Context, key, value string) error {
 	return r.db.WithContext(ctx).Model(&domain.SystemSetting{}).Where("key = ?", key).Update("value", value).Error
 }
+
+func (r *SystemSettingRepo) UpsertSystemSetting(ctx context.Context, key, value string) error {
+	result := r.db.WithContext(ctx).Model(&domain.SystemSetting{}).Where("key = ?", key).Update("value", value)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		// Record doesn't exist, create it
+		setting := &domain.SystemSetting{
+			Key:   consts.SystemSettingKey(key),
+			Value: []byte(value),
+		}
+		return r.db.WithContext(ctx).Create(setting).Error
+	}
+	return nil
+}

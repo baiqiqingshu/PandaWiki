@@ -42,6 +42,8 @@ func NewModelHandler(echo *echo.Echo, baseHandler *handler.BaseHandler, logger *
 	group.PUT("", handler.UpdateModel)
 	group.POST("/switch-mode", handler.SwitchMode)
 	group.GET("/mode-setting", handler.GetModelModeSetting)
+	group.GET("/search-mode", handler.GetSearchModeSetting)
+	group.PUT("/search-mode", handler.UpdateSearchModeSetting)
 
 	return handler
 }
@@ -267,3 +269,48 @@ func (h *ModelHandler) GetModelModeSetting(c echo.Context) error {
 	}
 	return h.NewResponseWithData(c, setting)
 }
+
+// GetSearchModeSetting
+//
+//	@Summary		get search mode setting
+//	@Description	get current search mode setting (fts or vector)
+//	@Tags			model
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	domain.Response{data=domain.SearchModeSetting}
+//	@Router			/api/v1/model/search-mode [get]
+func (h *ModelHandler) GetSearchModeSetting(c echo.Context) error {
+	ctx := c.Request().Context()
+	setting, err := h.usecase.GetSearchModeSetting(ctx)
+	if err != nil {
+		h.logger.Warn("failed to get search mode setting, return default", log.Error(err))
+		return h.NewResponseWithData(c, domain.SearchModeSetting{Mode: "fts"})
+	}
+	return h.NewResponseWithData(c, setting)
+}
+
+// UpdateSearchModeSetting
+//
+//	@Summary		update search mode setting
+//	@Description	switch search mode between fts and vector
+//	@Tags			model
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		domain.SearchModeSetting	true	"search mode setting"
+//	@Success		200		{object}	domain.Response
+//	@Router			/api/v1/model/search-mode [put]
+func (h *ModelHandler) UpdateSearchModeSetting(c echo.Context) error {
+	var req domain.SearchModeSetting
+	if err := c.Bind(&req); err != nil {
+		return h.NewResponseWithError(c, "bind request failed", err)
+	}
+	if req.Mode != "fts" && req.Mode != "vector" {
+		return h.NewResponseWithError(c, "invalid mode, must be 'fts' or 'vector'", nil)
+	}
+	ctx := c.Request().Context()
+	if err := h.usecase.UpdateSearchModeSetting(ctx, &req); err != nil {
+		return h.NewResponseWithError(c, "update search mode failed", err)
+	}
+	return h.NewResponseWithData(c, nil)
+}
+

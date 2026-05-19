@@ -28,6 +28,11 @@ type ModelModeSetting struct {
 	IsManualEmbeddingUpdated bool                    `json:"is_manual_embedding_updated"` // 手动模式下嵌入模型是否更新
 }
 
+// SearchModeSetting 检索模式配置
+type SearchModeSetting struct {
+	Mode string `json:"mode"` // "vector" | "fts"  默认 "fts"
+}
+
 // UploadDeniedExtensionsSetting 上传禁止扩展名配置
 // INSERT INTO "public"."system_settings" ("key", "value") VALUES ('upload', '{"denied_extensions": ["jsp"]}')
 type UploadDeniedExtensionsSetting struct {

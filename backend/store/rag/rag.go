@@ -10,6 +10,7 @@ import (
 	"github.com/chaitin/panda-wiki/config"
 	"github.com/chaitin/panda-wiki/domain"
 	"github.com/chaitin/panda-wiki/log"
+	"github.com/chaitin/panda-wiki/store/pg"
 )
 
 type QueryRecordsRequest struct {
@@ -62,20 +63,22 @@ type RAGService interface {
 	DeleteModel(ctx context.Context, model *domain.Model) error
 }
 
-func NewRAGService(config *config.Config, logger *log.Logger) (RAGService, error) {
+func NewRAGService(config *config.Config, db *pg.DB, logger *log.Logger) (RAGService, error) {
 	switch config.RAG.Provider {
 	case "ct":
-		// 如果 BaseURL 为空，降级为 NoopRAG
-		if config.RAG.CTRAG.BaseURL == "" {
-			logger.Info("RAG CT BaseURL is empty, falling back to NoopRAG")
-			return NewNoopRAG(logger), nil
-		}
-		return NewCTRAG(config, logger)
-	case "noop", "":
-		logger.Info("Using NoopRAG (RAG not configured)")
+		// 使用 RAGRouter 支持动态切换
+		return NewRAGRouter(config, db, logger)
+	case "noop":
+		logger.Info("Using NoopRAG (RAG explicitly disabled)")
 		return NewNoopRAG(logger), nil
+	case "fts":
+		logger.Info("Using PgFTSRAG (full-text search mode)")
+		return NewPgFTSRAG(db, logger), nil
+	case "":
+		// 默认使用 RAGRouter（支持动态切换，默认 FTS）
+		return NewRAGRouter(config, db, logger)
 	default:
-		return nil, fmt.Errorf("unsupported vector provider: %s", config.RAG.Provider)
+		return nil, fmt.Errorf("unsupported RAG provider: %s", config.RAG.Provider)
 	}
 }
 

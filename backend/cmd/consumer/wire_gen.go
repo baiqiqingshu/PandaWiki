@@ -35,11 +35,11 @@ func createApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	ragService, err := rag.NewRAGService(configConfig, logger)
+	db, err := pg.NewDB(configConfig)
 	if err != nil {
 		return nil, err
 	}
-	db, err := pg.NewDB(configConfig)
+	ragService, err := rag.NewRAGService(configConfig, db, logger)
 	if err != nil {
 		return nil, err
 	}

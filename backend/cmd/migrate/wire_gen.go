@@ -43,7 +43,7 @@ func createApp() (*App, error) {
 	}
 	ragRepository := mq2.NewRAGRepository(mqProducer)
 	userRepository := pg2.NewUserRepository(db, logger)
-	ragService, err := rag.NewRAGService(configConfig, logger)
+	ragService, err := rag.NewRAGService(configConfig, db, logger)
 	if err != nil {
 		return nil, err
 	}

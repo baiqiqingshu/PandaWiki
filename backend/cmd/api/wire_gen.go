@@ -59,7 +59,7 @@ func createApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	ragService, err := rag.NewRAGService(configConfig, logger)
+	ragService, err := rag.NewRAGService(configConfig, db, logger)
 	if err != nil {
 		return nil, err
 	}

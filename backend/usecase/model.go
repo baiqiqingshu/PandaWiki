@@ -294,3 +294,39 @@ func (u *ModelUsecase) updateRAGModelsByMode(ctx context.Context, mode, autoMode
 	}
 	return nil
 }
+
+// GetSearchModeSetting 获取当前检索模式设置
+func (u *ModelUsecase) GetSearchModeSetting(ctx context.Context) (domain.SearchModeSetting, error) {
+	setting, err := u.systemSettingRepo.GetSystemSetting(ctx, consts.SystemSettingSearchMode)
+	if err != nil {
+		// 如果设置不存在，返回默认值 fts
+		return domain.SearchModeSetting{Mode: "fts"}, nil
+	}
+	var config domain.SearchModeSetting
+	if err := json.Unmarshal(setting.Value, &config); err != nil {
+		return domain.SearchModeSetting{Mode: "fts"}, nil
+	}
+	if config.Mode == "" {
+		config.Mode = "fts"
+	}
+	return config, nil
+}
+
+// UpdateSearchModeSetting 更新检索模式设置
+func (u *ModelUsecase) UpdateSearchModeSetting(ctx context.Context, req *domain.SearchModeSetting) error {
+	value, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal search mode setting: %w", err)
+	}
+	if err := u.systemSettingRepo.UpsertSystemSetting(ctx, string(consts.SystemSettingSearchMode), string(value)); err != nil {
+		return fmt.Errorf("failed to update search mode setting: %w", err)
+	}
+
+	// 清除 RAGRouter 缓存（如果是 RAGRouter 类型）
+	if router, ok := u.ragStore.(*rag.RAGRouter); ok {
+		router.InvalidateCache()
+	}
+
+	return nil
+}
+
