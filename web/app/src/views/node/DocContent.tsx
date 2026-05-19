@@ -120,8 +120,10 @@ const DocContent = ({
   );
 
   useEffect(() => {
-    window.CAP_CUSTOM_WASM_URL =
-      window.location.origin + `${basePath}/cap@0.0.6/cap_wasm.min.js`;
+    if (window.isSecureContext) {
+      window.CAP_CUSTOM_WASM_URL =
+        window.location.origin + `${basePath}/cap@0.0.6/cap_wasm.min.js`;
+    }
   }, [basePath]);
 
   if (!editorRef || !info) return null;
