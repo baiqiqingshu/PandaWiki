@@ -379,18 +379,9 @@ const AiQaContent: React.FC<{
 
     try {
       for (const image of uploadedImages) {
-        let token = '';
-        try {
-          const Cap = (await import(`@cap.js/widget`)).default;
-          const cap = new Cap({
-            apiEndpoint: `${basePath}/share/v1/captcha/`,
-          });
-          const solution = await cap.solve();
-          token = solution.token;
-        } catch (error) {
-          message.error('验证失败');
-          return Promise.reject(error);
-        }
+        const token = await (
+          await import('@/utils/solveCaptcha')
+        ).solveCaptcha(`${basePath}/share/v1/captcha/`);
         // 上传新图片
         const result = await postShareV1CommonFileUpload({
           file: image.file,
@@ -414,21 +405,9 @@ const AiQaContent: React.FC<{
 
     const imagePaths = await uploadAllImages();
 
-    let token = '';
-
-    const Cap = (await import(`@cap.js/widget`)).default;
-    const cap = new Cap({
-      apiEndpoint: `${basePath}/share/v1/captcha/`,
-    });
-    try {
-      const solution = await cap.solve();
-      token = solution.token;
-    } catch (error) {
-      setLoading(false);
-      setThinking(4);
-      message.error('验证失败');
-      return;
-    }
+    const token = await (
+      await import('@/utils/solveCaptcha')
+    ).solveCaptcha(`${basePath}/share/v1/captcha/`);
 
     const reqData = {
       message: q,

@@ -133,20 +133,9 @@ const CommentInput = React.forwardRef<CommentInputRef, CommentInputProps>(
             // 已经上传过的图片直接使用服务器 URL
             uploadedUrls.push(image.uploadedUrl);
           } else {
-            let token = '';
-
-            try {
-              const Cap = (await import(`@cap.js/widget`)).default;
-              const cap = new Cap({
-                apiEndpoint: `${basePath}/share/v1/captcha/`,
-              });
-              const solution = await cap.solve();
-              token = solution.token;
-            } catch (error) {
-              message.error('验证失败');
-              setUploading(false);
-              return Promise.reject(error);
-            }
+            const token = await (
+              await import('@/utils/solveCaptcha')
+            ).solveCaptcha(`${basePath}/share/v1/captcha/`);
             // 上传新图片
             const result = await postShareV1CommonFileUpload({
               file: image.file,

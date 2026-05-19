@@ -68,14 +68,9 @@ const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
     onProgress?: (progress: { progress: number }) => void,
     _abortSignal?: AbortSignal,
   ) => {
-    let token = '';
+    const { solveCaptcha } = await import('@/utils/solveCaptcha');
+    const token = await solveCaptcha(`${baseUrl}/share/v1/captcha/`);
     try {
-      const Cap = (await import('@cap.js/widget')).default;
-      const cap = new Cap({
-        apiEndpoint: `${baseUrl}/share/v1/captcha/`,
-      });
-      const solution = await cap.solve();
-      token = solution.token;
       onProgress?.({ progress: 0 });
       const { key } = await postShareV1CommonFileUpload({
         file,
@@ -84,7 +79,7 @@ const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
       onProgress?.({ progress: 1 });
       return Promise.resolve('/static-file/' + key);
     } catch (error) {
-      message.error('验证失败');
+      message.error('上传失败');
       return Promise.reject(error);
     }
   };
@@ -93,14 +88,9 @@ const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
     url: string,
     abortSignal?: AbortSignal,
   ) => {
-    let token = '';
+    const { solveCaptcha } = await import('@/utils/solveCaptcha');
+    const token = await solveCaptcha(`${baseUrl}/share/v1/captcha/`);
     try {
-      const Cap = (await import('@cap.js/widget')).default;
-      const cap = new Cap({
-        apiEndpoint: `${baseUrl}/share/v1/captcha/`,
-      });
-      const solution = await cap.solve();
-      token = solution.token;
       const { key } = await postShareV1CommonFileUploadUrl(
         { url, captcha_token: token },
         {
@@ -109,7 +99,7 @@ const Wrap = ({ detail: defaultDetail = {} }: WrapProps) => {
       );
       return Promise.resolve('/static-file/' + key);
     } catch (error) {
-      message.error('验证失败');
+      message.error('上传失败');
       return Promise.reject(error);
     }
   };

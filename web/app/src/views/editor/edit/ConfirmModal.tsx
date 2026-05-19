@@ -75,18 +75,8 @@ const ConfirmModal = ({ open, onCancel, onOk }: ConfirmModalProps) => {
       setReasonError(true);
       return;
     }
-    let token = '';
-    const Cap = (await import(`@cap.js/widget`)).default;
-    const cap = new Cap({
-      apiEndpoint: `${basePath}/share/v1/captcha/`,
-    });
-    try {
-      const solution = await cap.solve();
-      token = solution.token;
-    } catch (error) {
-      message.error('验证失败');
-      return;
-    }
+    const { solveCaptcha } = await import('@/utils/solveCaptcha');
+    const token = await solveCaptcha(`${basePath}/share/v1/captcha/`);
     return onOk(reason, token);
   };
 
