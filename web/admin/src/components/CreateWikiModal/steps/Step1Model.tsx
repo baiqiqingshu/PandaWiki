@@ -8,7 +8,7 @@ import React, {
 import { Box } from '@mui/material';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { setModelList } from '@/store/slices/config';
-import { getApiV1ModelList, getApiV1ModelModeSetting } from '@/request/Model';
+import { getApiV1ModelList } from '@/request/Model';
 import { GithubComChaitinPandaWikiDomainModelListItem } from '@/request/types';
 import ModelConfig, {
   ModelConfigRef,
@@ -66,13 +66,6 @@ const Step1Model: React.FC<Step1ModelProps> = ({ ref }) => {
   }, [modelList]);
 
   const onSubmit = async () => {
-    // 尝试提交模型配置，但不强制要求
-    try {
-      await modelConfigRef.current?.onSubmit?.();
-    } catch {
-      // 模型配置提交失败，忽略错误，允许跳过
-    }
-
     // 模型配置为可选，直接通过，不再强制校验
     return Promise.resolve();
   };
@@ -92,8 +85,6 @@ const Step1Model: React.FC<Step1ModelProps> = ({ ref }) => {
         analysisModelData={analysisModelData}
         analysisVLModelData={analysisVLModelData}
         getModelList={getModelList}
-        hideDocumentationHint={true}
-        showTip={true}
         showSaveBtn={false}
       />
     </Box>

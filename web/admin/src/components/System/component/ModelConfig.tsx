@@ -1,24 +1,11 @@
 import ErrorJSON from '@/assets/json/error.json';
 import Card from '@/components/Card';
 import { ModelProvider } from '@/constant/enums';
-import {
-  postApiV1ModelSwitchMode,
-  putApiV1Model,
-  getApiV1ModelModeSetting,
-} from '@/request/Model';
+import { putApiV1Model } from '@/request/Model';
 import { GithubComChaitinPandaWikiDomainModelListItem } from '@/request/types';
 import { addOpacityToColor } from '@/utils';
 import { message, Modal } from '@ctzhian/ui';
-import {
-  Box,
-  Button,
-  Stack,
-  Switch,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  useTheme,
-} from '@mui/material';
+import { Box, Button, Stack, Switch, useTheme } from '@mui/material';
 import LottieIcon from '../../LottieIcon';
 import {
   useState,
@@ -34,7 +21,6 @@ import {
   convertLocalModelToUIModel,
   modelService,
 } from '@/services/modelService';
-import AutoModelConfig, { AutoModelConfigRef } from './AutoModelConfig';
 
 const ModelModal = lazy(() =>
   import('@ctzhian/modelkit').then(
@@ -43,9 +29,7 @@ const ModelModal = lazy(() =>
 );
 
 export interface ModelConfigRef {
-  getAutoConfigFormData: () => { apiKey: string; selectedModel: string } | null;
   handleClose: () => void;
-  onSubmit: () => Promise<void>;
 }
 
 interface ModelConfigProps {
@@ -56,9 +40,6 @@ interface ModelConfigProps {
   analysisModelData: GithubComChaitinPandaWikiDomainModelListItem | null;
   analysisVLModelData: GithubComChaitinPandaWikiDomainModelListItem | null;
   getModelList: () => void;
-  autoSwitchToAutoMode?: boolean;
-  hideDocumentationHint?: boolean;
-  showTip?: boolean;
   showSaveBtn?: boolean;
 }
 
@@ -73,20 +54,8 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
       analysisModelData,
       analysisVLModelData,
       getModelList,
-      autoSwitchToAutoMode = false,
-      hideDocumentationHint = false,
-      showTip = false,
       showSaveBtn = true,
     } = props;
-
-    const [autoConfigMode, setAutoConfigMode] = useState(false);
-    const [hasAutoSwitched, setHasAutoSwitched] = useState(false);
-    const [tempMode, setTempMode] = useState<'auto' | 'manual'>('manual');
-    const [savedMode, setSavedMode] = useState<'auto' | 'manual'>('manual');
-    const [isSaving, setIsSaving] = useState(false);
-    const [initialApiKey, setInitialApiKey] = useState('');
-    const [initialChatModel, setInitialChatModel] = useState('');
-    const [hasConfigChanged, setHasConfigChanged] = useState(false);
 
     const [modelData, setModelData] = useState<Record<string, any>>({
       chat: chatModelData,
@@ -97,8 +66,6 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
     });
 
     const cacheModelData = useRef<Record<string, any>>({});
-
-    const autoConfigRef = useRef<AutoModelConfigRef>(null);
 
     const [addOpen, setAddOpen] = useState(false);
     const [addType, setAddType] = useState<
@@ -146,81 +113,13 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
       return forceUseOriginalHost() ? baseUrl : `${baseUrl}/v1`;
     };
 
-    // 组件挂载时,获取当前配置
-    useEffect(() => {
-      const fetchModeSetting = async () => {
-        try {
-          const setting = await getApiV1ModelModeSetting();
-          if (setting) {
-            const isAuto = setting.mode === 'auto';
-            const mode = setting.mode as 'auto' | 'manual';
-            setAutoConfigMode(isAuto);
-            setTempMode(mode);
-            setSavedMode(mode);
-
-            // 保存 API Key 和 Chat Model
-            if (setting.auto_mode_api_key) {
-              setInitialApiKey(setting.auto_mode_api_key);
-            }
-            if (setting.chat_model) {
-              setInitialChatModel(setting.chat_model);
-            }
-          }
-        } catch (err) {
-          console.error('获取模型配置失败:', err);
-        }
-      };
-      fetchModeSetting();
-    }, []);
-
-    // 如果需要自动切换到自动配置模式
-    useEffect(() => {
-      const switchToAutoMode = async () => {
-        if (autoSwitchToAutoMode && !hasAutoSwitched) {
-          try {
-            await postApiV1ModelSwitchMode({ mode: 'auto' });
-            setAutoConfigMode(true);
-            setTempMode('auto');
-            setSavedMode('auto');
-            setHasAutoSwitched(true);
-            getModelList();
-          } catch (err) {
-            console.error('切换到自动配置模式失败:', err);
-          }
-        }
-      };
-      switchToAutoMode();
-    }, [autoSwitchToAutoMode, hasAutoSwitched, getModelList]);
-
     // 处理关闭弹窗
     const handleCloseModal = () => {
-      // 判断是否有未应用的更改
-      const hasUnappliedChanges = tempMode !== savedMode || hasConfigChanged;
-
-      if (hasUnappliedChanges) {
-        Modal.confirm({
-          title: '提示',
-          content: '有未应用的设置，是否确认关闭？',
-          onOk: () => {
-            onCloseModal();
-          },
-          okText: '确认',
-          cancelText: '取消',
-        });
-      } else {
-        onCloseModal();
-      }
+      onCloseModal();
     };
 
     // 暴露方法给父组件
     useImperativeHandle(ref, () => ({
-      getAutoConfigFormData: () => {
-        if (autoConfigMode && autoConfigRef.current) {
-          return autoConfigRef.current.getFormData();
-        }
-        return null;
-      },
-      onSubmit: handleSave,
       handleClose: handleCloseModal,
     }));
 
@@ -239,84 +138,6 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
       analysisModelData,
       analysisVLModelData,
     ]);
-
-    const handleSave = async () => {
-      if (!showSaveBtn) {
-        return await performSave();
-      }
-
-      if (tempMode !== savedMode || hasConfigChanged) {
-        // 检测是否切换了模式
-        const isModeChanged = tempMode !== savedMode;
-        // 检测向量模型是否变更 (比较 provider + model 组合)
-        const isEmbeddingModelChanged = !!cacheModelData.current['embedding'];
-
-        // 如果切换了模式或修改了向量模型,需要确认
-        if (isModeChanged || isEmbeddingModelChanged) {
-          Modal.confirm({
-            title: '确认操作',
-            content: '此操作会触发重新学习，请确认是否继续？',
-            onOk: async () => {
-              await performSave();
-            },
-            okText: '确认',
-            cancelText: '取消',
-          });
-        } else {
-          await performSave();
-        }
-      }
-    };
-
-    const performSave = async () => {
-      setIsSaving(true);
-      const modelConfigList = Object.keys(cacheModelData.current);
-
-      try {
-        const requestData: {
-          mode: 'auto' | 'manual';
-          auto_mode_api_key?: string;
-          chat_model?: string;
-        } = {
-          mode: tempMode,
-        };
-
-        // 如果是自动模式，获取用户输入的 API Key 和 model
-        if (tempMode === 'auto' && autoConfigRef.current) {
-          const formData = autoConfigRef.current.getFormData();
-          if (formData) {
-            requestData.auto_mode_api_key = formData.apiKey;
-            requestData.chat_model = formData.selectedModel;
-          }
-        }
-
-        await postApiV1ModelSwitchMode(requestData);
-        setSavedMode(tempMode);
-        setAutoConfigMode(tempMode === 'auto');
-        setHasConfigChanged(false); // 重置变更标记
-
-        // 更新保存的初始值
-        if (tempMode === 'auto' && autoConfigRef.current) {
-          const formData = autoConfigRef.current.getFormData();
-          if (formData) {
-            setInitialApiKey(formData.apiKey);
-            setInitialChatModel(formData.selectedModel);
-          }
-        }
-
-        if (showSaveBtn && modelConfigList.length === 0) {
-          message.success(
-            tempMode === 'auto'
-              ? '已切换为自动配置模式'
-              : '已切换为手动配置模式',
-          );
-        }
-        cacheModelData.current = {};
-        await getModelList(); // 刷新模型列表
-      } finally {
-        setIsSaving(false);
-      }
-    };
 
     const IconModel = modelData.chat
       ? ModelProvider[modelData.chat.provider as keyof typeof ModelProvider]
@@ -396,159 +217,228 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
               />
               模型配置
             </Box>
-            <Stack gap={1} direction='row' alignItems='center'>
-              <RadioGroup
-                row
-                value={tempMode}
-                onChange={e => {
-                  const newMode = e.target.value as 'auto' | 'manual';
-                  setTempMode(newMode);
-                  // 立即切换显示的组件
-                  setAutoConfigMode(newMode === 'auto');
-                  // 切换模式时重置变更标记
-                  setHasConfigChanged(false);
-                }}
+          </Box>
+        </Box>
+        {/* Chat */}
+        <Card
+          sx={{
+            flex: 1,
+            p: 2,
+            overflow: 'hidden',
+            overflowY: 'auto',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Stack
+            direction={'row'}
+            alignItems={'center'}
+            justifyContent={'space-between'}
+          >
+            <Box>
+              <Stack
+                direction={'row'}
+                alignItems={'center'}
+                gap={1}
+                sx={{ width: 500 }}
               >
-                <FormControlLabel
-                  value='auto'
-                  control={<Radio size='small' />}
-                  label='自动配置'
-                />
-                <FormControlLabel
-                  value='manual'
-                  control={<Radio size='small' />}
-                  label='手动配置'
-                />
-              </RadioGroup>
-              {showSaveBtn && (
+                {modelData.chat ? (
+                  <>
+                    {IconModel && <IconModel sx={{ fontSize: 18 }} />}
+                    <Box
+                      sx={{
+                        fontSize: 14,
+                        lineHeight: '20px',
+                        color: 'text.tertiary',
+                      }}
+                    >
+                      {ModelProvider[
+                        modelData.chat.provider as keyof typeof ModelProvider
+                      ].cn ||
+                        ModelProvider[
+                          modelData.chat.provider as keyof typeof ModelProvider
+                        ].label ||
+                        '其他'}
+                      &nbsp;&nbsp;/
+                    </Box>
+                    <Box
+                      sx={{
+                        fontSize: 14,
+                        lineHeight: '20px',
+                        fontFamily: 'Gbold',
+                        ml: -0.5,
+                      }}
+                    >
+                      {modelData.chat.model}
+                    </Box>
+                    <Box
+                      sx={{
+                        fontSize: 12,
+                        px: 1,
+                        lineHeight: '20px',
+                        borderRadius: '10px',
+                        bgcolor: addOpacityToColor(
+                          theme.palette.primary.main,
+                          0.1,
+                        ),
+                        color: 'primary.main',
+                      }}
+                    >
+                      智能对话模型
+                    </Box>
+                  </>
+                ) : (
+                  <Box
+                    sx={{
+                      fontSize: 14,
+                      lineHeight: '20px',
+                      fontFamily: 'Gbold',
+                      ml: -0.5,
+                    }}
+                  >
+                    智能对话模型
+                  </Box>
+                )}
                 <Box
                   sx={{
                     fontSize: 12,
-                    color: 'text.tertiary',
-                    ml: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.5,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: addOpacityToColor(theme.palette.primary.main, 0.1),
+                    color: 'primary.main',
                   }}
                 >
-                  <Box
-                    component='span'
-                    sx={{
-                      color: 'warning.main',
-                      fontWeight: 'bold',
-                    }}
-                  >
-                    提示：
-                  </Box>
-                  切换配置模式或修改向量模型会触发重新学习
+                  大模型
+                </Box>
+                <Box
+                  sx={{
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: theme.palette.divider,
+                    color: 'text.tertiary',
+                  }}
+                >
+                  可选
+                </Box>
+              </Stack>
+              <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
+                在
+                <Box component='span' sx={{ fontWeight: 'bold' }}>
+                  {' '}
+                  智能问答{' '}
+                </Box>
+                和
+                <Box component='span' sx={{ fontWeight: 'bold' }}>
+                  {' '}
+                  摘要生成{' '}
+                </Box>
+                过程中使用。
+              </Box>
+            </Box>
+            <Box sx={{ flexGrow: 1, flexSelf: 'flex-start' }}>
+              {modelData.chat ? (
+                <Box
+                  sx={{
+                    display: 'inline-block',
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: addOpacityToColor(theme.palette.success.main, 0.1),
+                    color: 'success.main',
+                  }}
+                >
+                  状态正常
+                </Box>
+              ) : (
+                <Box
+                  sx={{
+                    display: 'inline-block',
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: theme.palette.divider,
+                    color: 'text.tertiary',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  可选配置
                 </Box>
               )}
-            </Stack>
-          </Box>
-          {(tempMode !== savedMode || hasConfigChanged) && showSaveBtn && (
+            </Box>
             <Button
-              variant='contained'
               size='small'
-              loading={isSaving}
-              onClick={handleSave}
-              sx={{ mt: 3 }}
+              variant='outlined'
+              loading={openingAdd === 'chat'}
+              onClick={() => handleOpenAdd('chat')}
             >
-              应用
+              {modelData.chat ? '修改' : '配置'}
             </Button>
-          )}
-        </Box>
-        {autoConfigMode ? (
-          <AutoModelConfig
-            ref={autoConfigRef}
-            showTip={showTip}
-            initialApiKey={initialApiKey}
-            initialChatModel={initialChatModel}
-            onDataChange={() => setHasConfigChanged(true)}
-          />
-        ) : (
-          <>
-            {/* Chat */}
-            <Card
-              sx={{
-                flex: 1,
-                p: 2,
-                overflow: 'hidden',
-                overflowY: 'auto',
-                border: '1px solid',
-                borderColor: 'divider',
-              }}
-            >
+          </Stack>
+        </Card>
+
+        {/* Embedding */}
+        <Card
+          sx={{
+            flex: 1,
+            p: 2,
+            overflow: 'hidden',
+            overflowY: 'auto',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Stack
+            direction={'row'}
+            alignItems={'center'}
+            justifyContent={'space-between'}
+          >
+            <Box>
               <Stack
                 direction={'row'}
                 alignItems={'center'}
-                justifyContent={'space-between'}
+                gap={1}
+                sx={{ width: 500 }}
               >
-                <Box>
-                  <Stack
-                    direction={'row'}
-                    alignItems={'center'}
-                    gap={1}
-                    sx={{ width: 500 }}
-                  >
-                    {modelData.chat ? (
-                      <>
-                        {IconModel && <IconModel sx={{ fontSize: 18 }} />}
-                        <Box
-                          sx={{
-                            fontSize: 14,
-                            lineHeight: '20px',
-                            color: 'text.tertiary',
-                          }}
-                        >
-                          {ModelProvider[
-                            modelData.chat
-                              .provider as keyof typeof ModelProvider
-                          ].cn ||
-                            ModelProvider[
-                              modelData.chat
-                                .provider as keyof typeof ModelProvider
-                            ].label ||
-                            '其他'}
-                          &nbsp;&nbsp;/
-                        </Box>
-                        <Box
-                          sx={{
-                            fontSize: 14,
-                            lineHeight: '20px',
-                            fontFamily: 'Gbold',
-                            ml: -0.5,
-                          }}
-                        >
-                          {modelData.chat.model}
-                        </Box>
-                        <Box
-                          sx={{
-                            fontSize: 12,
-                            px: 1,
-                            lineHeight: '20px',
-                            borderRadius: '10px',
-                            bgcolor: addOpacityToColor(
-                              theme.palette.primary.main,
-                              0.1,
-                            ),
-                            color: 'primary.main',
-                          }}
-                        >
-                          智能对话模型
-                        </Box>
-                      </>
-                    ) : (
-                      <Box
-                        sx={{
-                          fontSize: 14,
-                          lineHeight: '20px',
-                          fontFamily: 'Gbold',
-                          ml: -0.5,
-                        }}
-                      >
-                        智能对话模型
-                      </Box>
+                {modelData.embedding ? (
+                  <>
+                    {IconEmbeddingModel && (
+                      <IconEmbeddingModel sx={{ fontSize: 18 }} />
                     )}
+
+                    <Box
+                      sx={{
+                        fontSize: 14,
+                        lineHeight: '20px',
+                        color: 'text.tertiary',
+                      }}
+                    >
+                      {ModelProvider[
+                        modelData.embedding
+                          .provider as keyof typeof ModelProvider
+                      ].cn ||
+                        ModelProvider[
+                          modelData.embedding
+                            .provider as keyof typeof ModelProvider
+                        ].label ||
+                        '其他'}
+                      &nbsp;&nbsp;/
+                    </Box>
+                    <Box
+                      sx={{
+                        fontSize: 14,
+                        lineHeight: '20px',
+                        fontFamily: 'Gbold',
+                        ml: -0.5,
+                      }}
+                    >
+                      {modelData.embedding.model}
+                    </Box>
                     <Box
                       sx={{
                         fontSize: 12,
@@ -562,167 +452,165 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
                         color: 'primary.main',
                       }}
                     >
-                      大模型
+                      向量模型
                     </Box>
-                    <Box
-                      sx={{
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: theme.palette.divider,
-                        color: 'text.tertiary',
-                      }}
-                    >
-                      可选
-                    </Box>
-                  </Stack>
-                  <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
-                    在
-                    <Box component='span' sx={{ fontWeight: 'bold' }}>
-                      {' '}
-                      智能问答{' '}
-                    </Box>
-                    和
-                    <Box component='span' sx={{ fontWeight: 'bold' }}>
-                      {' '}
-                      摘要生成{' '}
-                    </Box>
-                    过程中使用。
+                  </>
+                ) : (
+                  <Box
+                    sx={{
+                      fontSize: 14,
+                      lineHeight: '20px',
+                      fontFamily: 'Gbold',
+                      ml: -0.5,
+                    }}
+                  >
+                    向量模型
                   </Box>
-                </Box>
-                <Box sx={{ flexGrow: 1, flexSelf: 'flex-start' }}>
-                  {modelData.chat ? (
-                    <Box
-                      sx={{
-                        display: 'inline-block',
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: addOpacityToColor(
-                          theme.palette.success.main,
-                          0.1,
-                        ),
-                        color: 'success.main',
-                      }}
-                    >
-                      状态正常
-                    </Box>
-                  ) : (
-                    <Box
-                      sx={{
-                        display: 'inline-block',
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: theme.palette.divider,
-                        color: 'text.tertiary',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
-                      }}
-                    >
-                      可选配置
-                    </Box>
-                  )}
-                </Box>
-                <Button
-                  size='small'
-                  variant='outlined'
-                  loading={openingAdd === 'chat'}
-                  onClick={() => handleOpenAdd('chat')}
+                )}
+                <Box
+                  sx={{
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: addOpacityToColor(theme.palette.primary.main, 0.1),
+                    color: 'primary.main',
+                  }}
                 >
-                  {modelData.chat ? '修改' : '配置'}
-                </Button>
+                  小模型
+                </Box>
+                <Box
+                  sx={{
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: theme.palette.divider,
+                    color: 'text.tertiary',
+                  }}
+                >
+                  可选
+                </Box>
               </Stack>
-            </Card>
-
-            {/* Embedding */}
-            <Card
-              sx={{
-                flex: 1,
-                p: 2,
-                overflow: 'hidden',
-                overflowY: 'auto',
-                border: '1px solid',
-                borderColor: 'divider',
-              }}
+              <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
+                在
+                <Box component='span' sx={{ fontWeight: 'bold' }}>
+                  {' '}
+                  内容发布{' '}
+                </Box>
+                和
+                <Box component='span' sx={{ fontWeight: 'bold' }}>
+                  {' '}
+                  智能问答{' '}
+                </Box>
+                和
+                <Box component='span' sx={{ fontWeight: 'bold' }}>
+                  {' '}
+                  智能搜索{' '}
+                </Box>
+                过程中使用。
+              </Box>
+            </Box>
+            <Box sx={{ flexGrow: 1, flexSelf: 'flex-start' }}>
+              {modelData.embedding ? (
+                <Box
+                  sx={{
+                    display: 'inline-block',
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: addOpacityToColor(theme.palette.success.main, 0.1),
+                    color: 'success.main',
+                  }}
+                >
+                  状态正常
+                </Box>
+              ) : (
+                <Box
+                  sx={{
+                    display: 'inline-block',
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: theme.palette.divider,
+                    color: 'text.tertiary',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  可选配置
+                </Box>
+              )}
+            </Box>
+            <Button
+              size='small'
+              variant='outlined'
+              loading={openingAdd === 'embedding'}
+              onClick={() => handleOpenAdd('embedding')}
             >
+              {modelData.embedding ? '修改' : '配置'}
+            </Button>
+          </Stack>
+        </Card>
+
+        {/* Rerank */}
+        <Card
+          sx={{
+            flex: 1,
+            p: 2,
+            overflow: 'hidden',
+            overflowY: 'auto',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Stack
+            direction={'row'}
+            alignItems={'center'}
+            justifyContent={'space-between'}
+          >
+            <Box>
               <Stack
                 direction={'row'}
                 alignItems={'center'}
-                justifyContent={'space-between'}
+                gap={1}
+                sx={{ width: 500 }}
               >
-                <Box>
-                  <Stack
-                    direction={'row'}
-                    alignItems={'center'}
-                    gap={1}
-                    sx={{ width: 500 }}
-                  >
-                    {modelData.embedding ? (
-                      <>
-                        {IconEmbeddingModel && (
-                          <IconEmbeddingModel sx={{ fontSize: 18 }} />
-                        )}
-
-                        <Box
-                          sx={{
-                            fontSize: 14,
-                            lineHeight: '20px',
-                            color: 'text.tertiary',
-                          }}
-                        >
-                          {ModelProvider[
-                            modelData.embedding
-                              .provider as keyof typeof ModelProvider
-                          ].cn ||
-                            ModelProvider[
-                              modelData.embedding
-                                .provider as keyof typeof ModelProvider
-                            ].label ||
-                            '其他'}
-                          &nbsp;&nbsp;/
-                        </Box>
-                        <Box
-                          sx={{
-                            fontSize: 14,
-                            lineHeight: '20px',
-                            fontFamily: 'Gbold',
-                            ml: -0.5,
-                          }}
-                        >
-                          {modelData.embedding.model}
-                        </Box>
-                        <Box
-                          sx={{
-                            fontSize: 12,
-                            px: 1,
-                            lineHeight: '20px',
-                            borderRadius: '10px',
-                            bgcolor: addOpacityToColor(
-                              theme.palette.primary.main,
-                              0.1,
-                            ),
-                            color: 'primary.main',
-                          }}
-                        >
-                          向量模型
-                        </Box>
-                      </>
-                    ) : (
-                      <Box
-                        sx={{
-                          fontSize: 14,
-                          lineHeight: '20px',
-                          fontFamily: 'Gbold',
-                          ml: -0.5,
-                        }}
-                      >
-                        向量模型
-                      </Box>
+                {modelData.rerank ? (
+                  <>
+                    {IconRerankModel && (
+                      <IconRerankModel sx={{ fontSize: 18 }} />
                     )}
+
+                    <Box
+                      sx={{
+                        fontSize: 14,
+                        lineHeight: '20px',
+                        color: 'text.tertiary',
+                      }}
+                    >
+                      {ModelProvider[
+                        modelData.rerank.provider as keyof typeof ModelProvider
+                      ].cn ||
+                        ModelProvider[
+                          modelData.rerank
+                            .provider as keyof typeof ModelProvider
+                        ].label ||
+                        '其他'}
+                      &nbsp;&nbsp;/
+                    </Box>
+                    <Box
+                      sx={{
+                        fontSize: 14,
+                        lineHeight: '20px',
+                        fontFamily: 'Gbold',
+                        ml: -0.5,
+                      }}
+                    >
+                      {modelData.rerank.model}
+                    </Box>
                     <Box
                       sx={{
                         fontSize: 12,
@@ -736,172 +624,161 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
                         color: 'primary.main',
                       }}
                     >
-                      小模型
+                      重排序模型
                     </Box>
-                    <Box
-                      sx={{
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: theme.palette.divider,
-                        color: 'text.tertiary',
-                      }}
-                    >
-                      可选
-                    </Box>
-                  </Stack>
-                  <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
-                    在
-                    <Box component='span' sx={{ fontWeight: 'bold' }}>
-                      {' '}
-                      内容发布{' '}
-                    </Box>
-                    和
-                    <Box component='span' sx={{ fontWeight: 'bold' }}>
-                      {' '}
-                      智能问答{' '}
-                    </Box>
-                    和
-                    <Box component='span' sx={{ fontWeight: 'bold' }}>
-                      {' '}
-                      智能搜索{' '}
-                    </Box>
-                    过程中使用。
+                  </>
+                ) : (
+                  <Box
+                    sx={{
+                      fontSize: 14,
+                      lineHeight: '20px',
+                      fontFamily: 'Gbold',
+                      ml: -0.5,
+                    }}
+                  >
+                    重排序模型
                   </Box>
-                </Box>
-                <Box sx={{ flexGrow: 1, flexSelf: 'flex-start' }}>
-                  {modelData.embedding ? (
-                    <Box
-                      sx={{
-                        display: 'inline-block',
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: addOpacityToColor(
-                          theme.palette.success.main,
-                          0.1,
-                        ),
-                        color: 'success.main',
-                      }}
-                    >
-                      状态正常
-                    </Box>
-                  ) : (
-                    <Box
-                      sx={{
-                        display: 'inline-block',
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: theme.palette.divider,
-                        color: 'text.tertiary',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
-                      }}
-                    >
-                      可选配置
-                    </Box>
-                  )}
-                </Box>
-                <Button
-                  size='small'
-                  variant='outlined'
-                  loading={openingAdd === 'embedding'}
-                  onClick={() => handleOpenAdd('embedding')}
+                )}
+                <Box
+                  sx={{
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: addOpacityToColor(theme.palette.primary.main, 0.1),
+                    color: 'primary.main',
+                  }}
                 >
-                  {modelData.embedding ? '修改' : '配置'}
-                </Button>
+                  小模型
+                </Box>
+                <Box
+                  sx={{
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: theme.palette.divider,
+                    color: 'text.tertiary',
+                  }}
+                >
+                  可选
+                </Box>
               </Stack>
-            </Card>
-
-            {/* Rerank */}
-            <Card
-              sx={{
-                flex: 1,
-                p: 2,
-                overflow: 'hidden',
-                overflowY: 'auto',
-                border: '1px solid',
-                borderColor: 'divider',
-              }}
+              <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
+                在
+                <Box component='span' sx={{ fontWeight: 'bold' }}>
+                  {' '}
+                  智能问答{' '}
+                </Box>
+                和
+                <Box component='span' sx={{ fontWeight: 'bold' }}>
+                  {' '}
+                  智能搜索{' '}
+                </Box>
+                过程中使用。
+              </Box>
+            </Box>
+            <Box sx={{ flexGrow: 1, flexSelf: 'flex-start' }}>
+              {modelData.rerank ? (
+                <Box
+                  sx={{
+                    display: 'inline-block',
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: addOpacityToColor(theme.palette.success.main, 0.1),
+                    color: 'success.main',
+                  }}
+                >
+                  状态正常
+                </Box>
+              ) : (
+                <Box
+                  sx={{
+                    display: 'inline-block',
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: theme.palette.divider,
+                    color: 'text.tertiary',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  可选配置
+                </Box>
+              )}
+            </Box>
+            <Button
+              size='small'
+              variant='outlined'
+              loading={openingAdd === 'rerank'}
+              onClick={() => handleOpenAdd('rerank')}
             >
+              {modelData.rerank ? '修改' : '配置'}
+            </Button>
+          </Stack>
+        </Card>
+
+        {/* Analysis */}
+        <Card
+          sx={{
+            flex: 1,
+            p: 2,
+            overflow: 'hidden',
+            overflowY: 'auto',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Stack
+            direction={'row'}
+            alignItems={'center'}
+            justifyContent={'space-between'}
+          >
+            <Box>
               <Stack
                 direction={'row'}
                 alignItems={'center'}
-                justifyContent={'space-between'}
+                gap={1}
+                sx={{ width: 500 }}
               >
-                <Box>
-                  <Stack
-                    direction={'row'}
-                    alignItems={'center'}
-                    gap={1}
-                    sx={{ width: 500 }}
-                  >
-                    {modelData.rerank ? (
-                      <>
-                        {IconRerankModel && (
-                          <IconRerankModel sx={{ fontSize: 18 }} />
-                        )}
-
-                        <Box
-                          sx={{
-                            fontSize: 14,
-                            lineHeight: '20px',
-                            color: 'text.tertiary',
-                          }}
-                        >
-                          {ModelProvider[
-                            modelData.rerank
-                              .provider as keyof typeof ModelProvider
-                          ].cn ||
-                            ModelProvider[
-                              modelData.rerank
-                                .provider as keyof typeof ModelProvider
-                            ].label ||
-                            '其他'}
-                          &nbsp;&nbsp;/
-                        </Box>
-                        <Box
-                          sx={{
-                            fontSize: 14,
-                            lineHeight: '20px',
-                            fontFamily: 'Gbold',
-                            ml: -0.5,
-                          }}
-                        >
-                          {modelData.rerank.model}
-                        </Box>
-                        <Box
-                          sx={{
-                            fontSize: 12,
-                            px: 1,
-                            lineHeight: '20px',
-                            borderRadius: '10px',
-                            bgcolor: addOpacityToColor(
-                              theme.palette.primary.main,
-                              0.1,
-                            ),
-                            color: 'primary.main',
-                          }}
-                        >
-                          重排序模型
-                        </Box>
-                      </>
-                    ) : (
-                      <Box
-                        sx={{
-                          fontSize: 14,
-                          lineHeight: '20px',
-                          fontFamily: 'Gbold',
-                          ml: -0.5,
-                        }}
-                      >
-                        重排序模型
-                      </Box>
+                {modelData.analysis ? (
+                  <>
+                    {IconAnalysisModel && (
+                      <IconAnalysisModel sx={{ fontSize: 18 }} />
                     )}
+
+                    <Box
+                      sx={{
+                        fontSize: 14,
+                        lineHeight: '20px',
+                        color: 'text.tertiary',
+                      }}
+                    >
+                      {ModelProvider[
+                        modelData.analysis
+                          .provider as keyof typeof ModelProvider
+                      ].cn ||
+                        ModelProvider[
+                          modelData.analysis
+                            .provider as keyof typeof ModelProvider
+                        ].label ||
+                        '其他'}
+                      &nbsp;&nbsp;/
+                    </Box>
+                    <Box
+                      sx={{
+                        fontSize: 14,
+                        lineHeight: '20px',
+                        fontFamily: 'Gbold',
+                        ml: -0.5,
+                      }}
+                    >
+                      {modelData.analysis.model}
+                    </Box>
                     <Box
                       sx={{
                         fontSize: 12,
@@ -915,167 +792,160 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
                         color: 'primary.main',
                       }}
                     >
-                      小模型
+                      文档分析模型
                     </Box>
-                    <Box
-                      sx={{
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: theme.palette.divider,
-                        color: 'text.tertiary',
-                      }}
-                    >
-                      可选
-                    </Box>
-                  </Stack>
-                  <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
-                    在
-                    <Box component='span' sx={{ fontWeight: 'bold' }}>
-                      {' '}
-                      智能问答{' '}
-                    </Box>
-                    和
-                    <Box component='span' sx={{ fontWeight: 'bold' }}>
-                      {' '}
-                      智能搜索{' '}
-                    </Box>
-                    过程中使用。
+                  </>
+                ) : (
+                  <Box
+                    sx={{
+                      fontSize: 14,
+                      lineHeight: '20px',
+                      fontFamily: 'Gbold',
+                      ml: -0.5,
+                    }}
+                  >
+                    文档分析模型
                   </Box>
-                </Box>
-                <Box sx={{ flexGrow: 1, flexSelf: 'flex-start' }}>
-                  {modelData.rerank ? (
-                    <Box
-                      sx={{
-                        display: 'inline-block',
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: addOpacityToColor(
-                          theme.palette.success.main,
-                          0.1,
-                        ),
-                        color: 'success.main',
-                      }}
-                    >
-                      状态正常
-                    </Box>
-                  ) : (
-                    <Box
-                      sx={{
-                        display: 'inline-block',
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: theme.palette.divider,
-                        color: 'text.tertiary',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
-                      }}
-                    >
-                      可选配置
-                    </Box>
-                  )}
-                </Box>
-                <Button
-                  size='small'
-                  variant='outlined'
-                  loading={openingAdd === 'rerank'}
-                  onClick={() => handleOpenAdd('rerank')}
+                )}
+                <Box
+                  sx={{
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: addOpacityToColor(theme.palette.primary.main, 0.1),
+                    color: 'primary.main',
+                  }}
                 >
-                  {modelData.rerank ? '修改' : '配置'}
-                </Button>
+                  小模型
+                </Box>
+                <Box
+                  sx={{
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: theme.palette.divider,
+                    color: 'text.tertiary',
+                  }}
+                >
+                  可选
+                </Box>
               </Stack>
-            </Card>
-
-            {/* Analysis */}
-            <Card
-              sx={{
-                flex: 1,
-                p: 2,
-                overflow: 'hidden',
-                overflowY: 'auto',
-                border: '1px solid',
-                borderColor: 'divider',
-              }}
+              <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
+                在
+                <Box component='span' sx={{ fontWeight: 'bold' }}>
+                  {' '}
+                  内容发布{' '}
+                </Box>
+                和
+                <Box component='span' sx={{ fontWeight: 'bold' }}>
+                  {' '}
+                  智能问答{' '}
+                </Box>
+                过程中使用。
+              </Box>
+            </Box>
+            <Box sx={{ flexGrow: 1, flexSelf: 'flex-start' }}>
+              {modelData.analysis ? (
+                <Box
+                  sx={{
+                    display: 'inline-block',
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: addOpacityToColor(theme.palette.success.main, 0.1),
+                    color: 'success.main',
+                  }}
+                >
+                  状态正常
+                </Box>
+              ) : (
+                <Box
+                  sx={{
+                    display: 'inline-block',
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: theme.palette.divider,
+                    color: 'text.tertiary',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  可选配置
+                </Box>
+              )}
+            </Box>
+            <Button
+              size='small'
+              variant='outlined'
+              loading={openingAdd === 'analysis'}
+              onClick={() => handleOpenAdd('analysis')}
             >
+              {modelData.analysis ? '修改' : '配置'}
+            </Button>
+          </Stack>
+        </Card>
+
+        {/* Analysis-VL */}
+        <Card
+          sx={{
+            flex: 1,
+            p: 2,
+            overflow: 'hidden',
+            overflowY: 'auto',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Stack
+            direction={'row'}
+            alignItems={'center'}
+            justifyContent={'space-between'}
+          >
+            <Box>
               <Stack
                 direction={'row'}
                 alignItems={'center'}
-                justifyContent={'space-between'}
+                gap={1}
+                sx={{ width: 500 }}
               >
-                <Box>
-                  <Stack
-                    direction={'row'}
-                    alignItems={'center'}
-                    gap={1}
-                    sx={{ width: 500 }}
-                  >
-                    {modelData.analysis ? (
-                      <>
-                        {IconAnalysisModel && (
-                          <IconAnalysisModel sx={{ fontSize: 18 }} />
-                        )}
-
-                        <Box
-                          sx={{
-                            fontSize: 14,
-                            lineHeight: '20px',
-                            color: 'text.tertiary',
-                          }}
-                        >
-                          {ModelProvider[
-                            modelData.analysis
-                              .provider as keyof typeof ModelProvider
-                          ].cn ||
-                            ModelProvider[
-                              modelData.analysis
-                                .provider as keyof typeof ModelProvider
-                            ].label ||
-                            '其他'}
-                          &nbsp;&nbsp;/
-                        </Box>
-                        <Box
-                          sx={{
-                            fontSize: 14,
-                            lineHeight: '20px',
-                            fontFamily: 'Gbold',
-                            ml: -0.5,
-                          }}
-                        >
-                          {modelData.analysis.model}
-                        </Box>
-                        <Box
-                          sx={{
-                            fontSize: 12,
-                            px: 1,
-                            lineHeight: '20px',
-                            borderRadius: '10px',
-                            bgcolor: addOpacityToColor(
-                              theme.palette.primary.main,
-                              0.1,
-                            ),
-                            color: 'primary.main',
-                          }}
-                        >
-                          文档分析模型
-                        </Box>
-                      </>
-                    ) : (
-                      <Box
-                        sx={{
-                          fontSize: 14,
-                          lineHeight: '20px',
-                          fontFamily: 'Gbold',
-                          ml: -0.5,
-                        }}
-                      >
-                        文档分析模型
-                      </Box>
+                {modelData['analysis-vl'] ? (
+                  <>
+                    {IconAnalysisVLModel && (
+                      <IconAnalysisVLModel sx={{ fontSize: 18 }} />
                     )}
+                    <Box
+                      sx={{
+                        fontSize: 14,
+                        lineHeight: '20px',
+                        color: 'text.tertiary',
+                      }}
+                    >
+                      {ModelProvider[
+                        modelData['analysis-vl']
+                          .provider as keyof typeof ModelProvider
+                      ].cn ||
+                        ModelProvider[
+                          modelData['analysis-vl']
+                            .provider as keyof typeof ModelProvider
+                        ].label ||
+                        '其他'}
+                      &nbsp;&nbsp;/
+                    </Box>
+                    <Box
+                      sx={{
+                        fontSize: 14,
+                        lineHeight: '20px',
+                        fontFamily: 'Gbold',
+                        ml: -0.5,
+                      }}
+                    >
+                      {modelData['analysis-vl'].model}
+                    </Box>
                     <Box
                       sx={{
                         fontSize: 12,
@@ -1089,272 +959,119 @@ const ModelConfig = forwardRef<ModelConfigRef, ModelConfigProps>(
                         color: 'primary.main',
                       }}
                     >
-                      小模型
+                      图像分析模型
                     </Box>
-                    <Box
-                      sx={{
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: theme.palette.divider,
-                        color: 'text.tertiary',
-                      }}
-                    >
-                      可选
-                    </Box>
-                  </Stack>
-                  <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
-                    在
-                    <Box component='span' sx={{ fontWeight: 'bold' }}>
-                      {' '}
-                      内容发布{' '}
-                    </Box>
-                    和
-                    <Box component='span' sx={{ fontWeight: 'bold' }}>
-                      {' '}
-                      智能问答{' '}
-                    </Box>
-                    过程中使用。
-                  </Box>
-                </Box>
-                <Box sx={{ flexGrow: 1, flexSelf: 'flex-start' }}>
-                  {modelData.analysis ? (
-                    <Box
-                      sx={{
-                        display: 'inline-block',
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: addOpacityToColor(
-                          theme.palette.success.main,
-                          0.1,
-                        ),
-                        color: 'success.main',
-                      }}
-                    >
-                      状态正常
-                    </Box>
-                  ) : (
-                    <Box
-                      sx={{
-                        display: 'inline-block',
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: theme.palette.divider,
-                        color: 'text.tertiary',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
-                      }}
-                    >
-                      可选配置
-                    </Box>
-                  )}
-                </Box>
-                <Button
-                  size='small'
-                  variant='outlined'
-                  loading={openingAdd === 'analysis'}
-                  onClick={() => handleOpenAdd('analysis')}
-                >
-                  {modelData.analysis ? '修改' : '配置'}
-                </Button>
-              </Stack>
-            </Card>
-
-            {/* Analysis-VL */}
-            <Card
-              sx={{
-                flex: 1,
-                p: 2,
-                overflow: 'hidden',
-                overflowY: 'auto',
-                border: '1px solid',
-                borderColor: 'divider',
-              }}
-            >
-              <Stack
-                direction={'row'}
-                alignItems={'center'}
-                justifyContent={'space-between'}
-              >
-                <Box>
-                  <Stack
-                    direction={'row'}
-                    alignItems={'center'}
-                    gap={1}
-                    sx={{ width: 500 }}
+                  </>
+                ) : (
+                  <Box
+                    sx={{
+                      fontSize: 14,
+                      lineHeight: '20px',
+                      fontFamily: 'Gbold',
+                      ml: -0.5,
+                    }}
                   >
-                    {modelData['analysis-vl'] ? (
-                      <>
-                        {IconAnalysisVLModel && (
-                          <IconAnalysisVLModel sx={{ fontSize: 18 }} />
-                        )}
-                        <Box
-                          sx={{
-                            fontSize: 14,
-                            lineHeight: '20px',
-                            color: 'text.tertiary',
-                          }}
-                        >
-                          {ModelProvider[
-                            modelData['analysis-vl']
-                              .provider as keyof typeof ModelProvider
-                          ].cn ||
-                            ModelProvider[
-                              modelData['analysis-vl']
-                                .provider as keyof typeof ModelProvider
-                            ].label ||
-                            '其他'}
-                          &nbsp;&nbsp;/
-                        </Box>
-                        <Box
-                          sx={{
-                            fontSize: 14,
-                            lineHeight: '20px',
-                            fontFamily: 'Gbold',
-                            ml: -0.5,
-                          }}
-                        >
-                          {modelData['analysis-vl'].model}
-                        </Box>
-                        <Box
-                          sx={{
-                            fontSize: 12,
-                            px: 1,
-                            lineHeight: '20px',
-                            borderRadius: '10px',
-                            bgcolor: addOpacityToColor(
-                              theme.palette.primary.main,
-                              0.1,
-                            ),
-                            color: 'primary.main',
-                          }}
-                        >
-                          图像分析模型
-                        </Box>
-                      </>
-                    ) : (
-                      <Box
-                        sx={{
-                          fontSize: 14,
-                          lineHeight: '20px',
-                          fontFamily: 'Gbold',
-                          ml: -0.5,
-                        }}
-                      >
-                        图像分析模型
-                      </Box>
-                    )}
-                    <Box
-                      sx={{
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: addOpacityToColor(
-                          theme.palette.primary.main,
-                          0.1,
-                        ),
-                        color: 'primary.main',
-                      }}
-                    >
-                      视觉模型
-                    </Box>
-                    <Box
-                      sx={{
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: theme.palette.divider,
-                        color: 'text.tertiary',
-                      }}
-                    >
-                      可选
-                    </Box>
-                    {modelData['analysis-vl'] &&
-                      modelData['analysis-vl'].id && (
-                        <Switch
-                          size='small'
-                          checked={modelData['analysis-vl'].is_active}
-                          onChange={() => {
-                            putApiV1Model({
-                              ...modelData['analysis-vl'],
-                              is_active: !modelData['analysis-vl'].is_active,
-                            }).then(() => {
-                              message.success('修改成功');
-                              getModelList();
-                            });
-                          }}
-                        />
-                      )}
-                  </Stack>
-                  <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
-                    在
-                    <Box component='span' sx={{ fontWeight: 'bold' }}>
-                      {' '}
-                      内容发布{' '}
-                    </Box>
-                    和
-                    <Box component='span' sx={{ fontWeight: 'bold' }}>
-                      {' '}
-                      智能问答{' '}
-                    </Box>
-                    过程中使用，启用后图像分析能力可用，可选配置。
+                    图像分析模型
                   </Box>
-                </Box>
-                <Box sx={{ flexGrow: 1, flexSelf: 'flex-start' }}>
-                  {modelData['analysis-vl'] ? (
-                    <Box
-                      sx={{
-                        display: 'inline-block',
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: addOpacityToColor(
-                          theme.palette.success.main,
-                          0.1,
-                        ),
-                        color: 'success.main',
-                      }}
-                    >
-                      状态正常
-                    </Box>
-                  ) : (
-                    <Box
-                      sx={{
-                        display: 'inline-block',
-                        fontSize: 12,
-                        px: 1,
-                        lineHeight: '20px',
-                        borderRadius: '10px',
-                        bgcolor: theme.palette.divider,
-                        color: 'text.tertiary',
-                        whiteSpace: 'nowrap',
-                        flexShrink: 0,
-                      }}
-                    >
-                      可选模型
-                    </Box>
-                  )}
-                </Box>
-                <Button
-                  size='small'
-                  variant='outlined'
-                  loading={openingAdd === 'analysis-vl'}
-                  onClick={() => handleOpenAdd('analysis-vl')}
+                )}
+                <Box
+                  sx={{
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: addOpacityToColor(theme.palette.primary.main, 0.1),
+                    color: 'primary.main',
+                  }}
                 >
-                  {modelData['analysis-vl'] ? '修改' : '配置'}
-                </Button>
+                  视觉模型
+                </Box>
+                <Box
+                  sx={{
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: theme.palette.divider,
+                    color: 'text.tertiary',
+                  }}
+                >
+                  可选
+                </Box>
+                {modelData['analysis-vl'] && modelData['analysis-vl'].id && (
+                  <Switch
+                    size='small'
+                    checked={modelData['analysis-vl'].is_active}
+                    onChange={() => {
+                      putApiV1Model({
+                        ...modelData['analysis-vl'],
+                        is_active: !modelData['analysis-vl'].is_active,
+                      }).then(() => {
+                        message.success('修改成功');
+                        getModelList();
+                      });
+                    }}
+                  />
+                )}
               </Stack>
-            </Card>
-          </>
-        )}
+              <Box sx={{ fontSize: 12, color: 'text.tertiary', mt: 1 }}>
+                在
+                <Box component='span' sx={{ fontWeight: 'bold' }}>
+                  {' '}
+                  内容发布{' '}
+                </Box>
+                和
+                <Box component='span' sx={{ fontWeight: 'bold' }}>
+                  {' '}
+                  智能问答{' '}
+                </Box>
+                过程中使用，启用后图像分析能力可用，可选配置。
+              </Box>
+            </Box>
+            <Box sx={{ flexGrow: 1, flexSelf: 'flex-start' }}>
+              {modelData['analysis-vl'] ? (
+                <Box
+                  sx={{
+                    display: 'inline-block',
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: addOpacityToColor(theme.palette.success.main, 0.1),
+                    color: 'success.main',
+                  }}
+                >
+                  状态正常
+                </Box>
+              ) : (
+                <Box
+                  sx={{
+                    display: 'inline-block',
+                    fontSize: 12,
+                    px: 1,
+                    lineHeight: '20px',
+                    borderRadius: '10px',
+                    bgcolor: theme.palette.divider,
+                    color: 'text.tertiary',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  可选模型
+                </Box>
+              )}
+            </Box>
+            <Button
+              size='small'
+              variant='outlined'
+              loading={openingAdd === 'analysis-vl'}
+              onClick={() => handleOpenAdd('analysis-vl')}
+            >
+              {modelData['analysis-vl'] ? '修改' : '配置'}
+            </Button>
+          </Stack>
+        </Card>
+
         {addOpen && (
           <Suspense fallback={null}>
             <ModelModal
