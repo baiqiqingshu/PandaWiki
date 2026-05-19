@@ -18,6 +18,7 @@ import (
 	_ "github.com/chaitin/panda-wiki/docs"
 
 	"github.com/chaitin/panda-wiki/config"
+	"github.com/chaitin/panda-wiki/consts"
 	"github.com/chaitin/panda-wiki/log"
 	PWMiddleware "github.com/chaitin/panda-wiki/middleware"
 )
@@ -124,13 +125,21 @@ func NewEcho(
 	e.Use(pwMiddleware.ReadOnly)
 	e.Use(sessionMiddleware.Session())
 
-	// License stub for open-source edition (前端请求此接口，开源版返回免费版信息)
+	// 注入 license edition 到 echo context（企业版）
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Set("edition", consts.LicenseEditionEnterprise)
+			return next(c)
+		}
+	})
+
+	// License stub（返回企业版信息）
 	e.GET("/api/v1/license", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"code":    0,
 			"success": true,
 			"data": map[string]interface{}{
-				"edition": 0, // LicenseEditionFree
+				"edition": consts.LicenseEditionEnterprise,
 			},
 		})
 	})
