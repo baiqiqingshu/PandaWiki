@@ -22,6 +22,7 @@ type APIHandlers struct {
 	CommentHandler       *CommentHandler
 	AuthV1Handler        *AuthV1Handler
 	NavHandler           *NavHandler
+	ExportHandler        *ExportHandler
 }
 
 var ProviderSet = wire.NewSet(
@@ -42,6 +43,7 @@ var ProviderSet = wire.NewSet(
 	NewCommentHandler,
 	NewAuthV1Handler,
 	NewNavHandler,
+	NewExportHandler,
 
 	wire.Struct(new(APIHandlers), "*"),
 )

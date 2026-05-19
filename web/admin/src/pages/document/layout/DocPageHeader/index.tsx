@@ -1,13 +1,15 @@
 import Card from '@/components/Card';
 import { getApiV1NodeStats } from '@/request/Node';
 import { useAppSelector } from '@/store';
-import { Box, ButtonBase, Stack } from '@mui/material';
+import { Box, Button, ButtonBase, Stack } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import DocSearch from './DocSearch';
 
 interface DocPageHeaderProps {
   onPublishClick: () => void;
   onRagClick: () => void;
+  onExportClick?: () => void;
+  onImportClick?: () => void;
   /** 变更时触发重新拉取统计 */
   refreshTrigger?: number;
 }
@@ -15,6 +17,8 @@ interface DocPageHeaderProps {
 const DocPageHeader = ({
   onPublishClick,
   onRagClick,
+  onExportClick,
+  onImportClick,
   refreshTrigger,
 }: DocPageHeaderProps) => {
   const { kb_id, isRefreshDocList } = useAppSelector(state => state.config);
@@ -134,7 +138,29 @@ const DocPageHeader = ({
             </>
           )}
         </Stack>
-        <DocSearch />
+        <Stack direction='row' alignItems='center' gap={1}>
+          {onExportClick && (
+            <Button
+              size='small'
+              variant='outlined'
+              onClick={onExportClick}
+              sx={{ fontSize: 12, whiteSpace: 'nowrap' }}
+            >
+              导出
+            </Button>
+          )}
+          {onImportClick && (
+            <Button
+              size='small'
+              variant='outlined'
+              onClick={onImportClick}
+              sx={{ fontSize: 12, whiteSpace: 'nowrap' }}
+            >
+              导入
+            </Button>
+          )}
+          <DocSearch />
+        </Stack>
       </Stack>
     </Card>
   );

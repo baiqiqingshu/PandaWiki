@@ -24,6 +24,8 @@ import {
 import { arrayMove } from '@dnd-kit/sortable';
 import { Stack } from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ExportDialog from '../component/ExportDialog';
+import ImportDialog from '../component/ImportDialog';
 import RagErrorReStart from '../component/RagErrorReStart';
 import DocPageHeader from './DocPageHeader';
 import DocPageList from './DocPageList';
@@ -43,6 +45,8 @@ const Content = () => {
   const [publishIds, setPublishIds] = useState<string[]>([]);
   const [ragOpen, setRagOpen] = useState(false);
   const [ragIds, setRagIds] = useState<string[]>([]);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [groups, setGroups] = useState<
     GithubComChaitinPandaWikiApiNodeV1NodeListGroupNavResp[]
   >([]);
@@ -240,6 +244,8 @@ const Content = () => {
           setRagIds([]);
           setRagOpen(true);
         }}
+        onExportClick={() => setExportOpen(true)}
+        onImportClick={() => setImportOpen(true)}
         refreshTrigger={refreshTrigger}
       />
       <DndContext
@@ -299,6 +305,19 @@ const Content = () => {
           setRagOpen(false);
           setRagIds([]);
         }}
+        refresh={refresh}
+      />
+      <ExportDialog
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        navId={nav_id || ''}
+        navName={navList.find(n => n.id === nav_id)?.name || ''}
+        nodeCount={groups.find(g => g.nav_id === nav_id)?.count || 0}
+      />
+      <ImportDialog
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        navList={navList}
         refresh={refresh}
       />
     </>

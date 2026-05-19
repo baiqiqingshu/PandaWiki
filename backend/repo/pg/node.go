@@ -1409,3 +1409,16 @@ func (r *NodeRepository) GetNodeStats(ctx context.Context, kbId string) (*v1.Nod
 
 	return &stats, nil
 }
+
+// GetNodesByNavID 获取指定 Nav 下的所有节点（含内容）
+func (r *NodeRepository) GetNodesByNavID(ctx context.Context, kbID, navID string) ([]*domain.Node, error) {
+	var nodes []*domain.Node
+	if err := r.db.WithContext(ctx).
+		Model(&domain.Node{}).
+		Where("kb_id = ? AND nav_id = ?", kbID, navID).
+		Order("position ASC").
+		Find(&nodes).Error; err != nil {
+		return nil, err
+	}
+	return nodes, nil
+}
