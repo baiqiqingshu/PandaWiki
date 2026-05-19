@@ -394,26 +394,7 @@ func (r *KnowledgeBaseRepository) CreateKnowledgeBase(ctx context.Context, maxKB
 				Keyword:    kb.Name,
 				Icon:       domain.DefaultPandaWikiIconB64,
 				WelcomeStr: fmt.Sprintf("欢迎使用%s", kb.Name),
-				Btns: []any{
-					AppBtn{
-						ID:       uuid.New().String(),
-						Icon:     domain.DefaultGitHubIconB64,
-						ShowIcon: true,
-						Target:   "_blank",
-						Text:     "GitHub",
-						URL:      "https://ly.safepoint.cloud/XEyeWqL",
-						Variant:  "contained",
-					},
-					AppBtn{
-						ID:       uuid.New().String(),
-						Icon:     "",
-						ShowIcon: false,
-						Target:   "_blank",
-						Text:     "PandaWiki",
-						URL:      "https://pandawiki.docs.baizhi.cloud",
-						Variant:  "outlined",
-					},
-				},
+				Btns: []any{},
 			},
 		}).Error; err != nil {
 			return err

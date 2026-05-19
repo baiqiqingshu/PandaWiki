@@ -13,7 +13,7 @@ import (
 type ModelProvider string
 
 const (
-	ModelProviderBrandBaiZhiCloud ModelProvider = "BaiZhiCloud"
+	ModelProviderOpenAI ModelProvider = "OpenAI"
 )
 
 type ModelType string

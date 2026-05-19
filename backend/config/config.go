@@ -130,8 +130,8 @@ func NewConfig() (*Config, error) {
 			SecretKey: "",
 		},
 		Sentry: SentryConfig{
-			Enabled: true,
-			DSN:     "https://2a4cff1ae04b624ffc72663f523024ff@sentry.baizhi.cloud/4",
+			Enabled: false,
+			DSN:     "",
 		},
 		CaddyAPI:     "/app/run/caddy-admin.sock",
 		SubnetPrefix: "169.254.15",

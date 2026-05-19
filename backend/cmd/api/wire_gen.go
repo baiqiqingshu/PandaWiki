@@ -25,7 +25,6 @@ import (
 	"github.com/chaitin/panda-wiki/store/pg"
 	"github.com/chaitin/panda-wiki/store/rag"
 	"github.com/chaitin/panda-wiki/store/s3"
-	"github.com/chaitin/panda-wiki/telemetry"
 	"github.com/chaitin/panda-wiki/usecase"
 )
 
@@ -191,18 +190,12 @@ func createApp() (*App, error) {
 		OpenapiV1Handler:         openapiV1Handler,
 		ShareCommonHandler:       shareCommonHandler,
 	}
-	mcpRepository := pg2.NewMCPRepository(db, logger)
-	client, err := telemetry.NewClient(logger, knowledgeBaseRepository, modelUsecase, userUsecase, nodeRepository, conversationRepository, mcpRepository, configConfig)
-	if err != nil {
-		return nil, err
-	}
 	app := &App{
 		HTTPServer:    httpServer,
 		Handlers:      apiHandlers,
 		ShareHandlers: shareHandler,
 		Config:        configConfig,
 		Logger:        logger,
-		Telemetry:     client,
 		DB:            db,
 		RAGService:    ragService,
 	}
@@ -217,7 +210,6 @@ type App struct {
 	ShareHandlers *share.ShareHandler
 	Config        *config.Config
 	Logger        *log.Logger
-	Telemetry     *telemetry.Client
 	DB            *pg.DB
 	RAGService    rag.RAGService
 }

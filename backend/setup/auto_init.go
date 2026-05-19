@@ -104,26 +104,7 @@ func AutoInitKnowledgeBase(db *pg.DB, ragService rag.RAGService, cfg *config.Con
 				Keyword:    cfg.WikiName,
 				Icon:       domain.DefaultPandaWikiIconB64,
 				WelcomeStr: fmt.Sprintf("欢迎使用%s", cfg.WikiName),
-				Btns: []any{
-					AppBtn{
-						ID:       uuid.New().String(),
-						Icon:     domain.DefaultGitHubIconB64,
-						ShowIcon: true,
-						Target:   "_blank",
-						Text:     "GitHub",
-						URL:      "https://ly.safepoint.cloud/XEyeWqL",
-						Variant:  "contained",
-					},
-					AppBtn{
-						ID:       uuid.New().String(),
-						Icon:     "",
-						ShowIcon: false,
-						Target:   "_blank",
-						Text:     "PandaWiki",
-						URL:      "https://pandawiki.docs.baizhi.cloud",
-						Variant:  "outlined",
-					},
-				},
+				Btns: []any{},
 			},
 		}
 		if err := tx.Create(app).Error; err != nil {

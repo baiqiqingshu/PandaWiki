@@ -7,9 +7,6 @@ import (
 
 	"github.com/cloudwego/eino/schema"
 
-	modelkitDomain "github.com/chaitin/ModelKit/v2/domain"
-	modelkit "github.com/chaitin/ModelKit/v2/usecase"
-
 	"github.com/chaitin/panda-wiki/config"
 	"github.com/chaitin/panda-wiki/consts"
 	"github.com/chaitin/panda-wiki/domain"
@@ -28,11 +25,9 @@ type ModelUsecase struct {
 	ragStore          rag.RAGService
 	kbRepo            *pg.KnowledgeBaseRepository
 	systemSettingRepo *pg.SystemSettingRepo
-	modelkit          *modelkit.ModelKit
 }
 
 func NewModelUsecase(modelRepo *pg.ModelRepository, nodeRepo *pg.NodeRepository, ragRepo *mq.RAGRepository, ragStore rag.RAGService, logger *log.Logger, config *config.Config, kbRepo *pg.KnowledgeBaseRepository, settingRepo *pg.SystemSettingRepo) *ModelUsecase {
-	modelkit := modelkit.NewModelKit(logger.Logger)
 	u := &ModelUsecase{
 		modelRepo:         modelRepo,
 		logger:            logger.WithModule("usecase.model"),
@@ -42,7 +37,6 @@ func NewModelUsecase(modelRepo *pg.ModelRepository, nodeRepo *pg.NodeRepository,
 		ragStore:          ragStore,
 		kbRepo:            kbRepo,
 		systemSettingRepo: settingRepo,
-		modelkit:          modelkit,
 	}
 	return u
 }
@@ -144,32 +138,10 @@ func (u *ModelUsecase) Update(ctx context.Context, req *domain.UpdateModelReq) e
 }
 
 func (u *ModelUsecase) GetChatModel(ctx context.Context) (*domain.Model, error) {
-	var model *domain.Model
-	modelModeSetting, err := u.GetModelModeSetting(ctx)
-	// 获取不到模型模式时，使用手动模式, 不返回错误
-	if err != nil {
-		u.logger.Error("get model mode setting failed, use manual mode", log.Error(err))
-	}
-	if err == nil && modelModeSetting.Mode == consts.ModelSettingModeAuto && modelModeSetting.AutoModeAPIKey != "" {
-		modelName := modelModeSetting.ChatModel
-		if modelName == "" {
-			modelName = string(consts.AutoModeDefaultChatModel)
-		}
-		model = &domain.Model{
-			Model:    modelName,
-			Type:     domain.ModelTypeChat,
-			IsActive: true,
-			BaseURL:  consts.AutoModeBaseURL,
-			APIKey:   modelModeSetting.AutoModeAPIKey,
-			Provider: domain.ModelProviderBrandBaiZhiCloud,
-		}
-		return model, nil
-	}
-	model, err = u.modelRepo.GetChatModel(ctx)
+	model, err := u.modelRepo.GetChatModel(ctx)
 	if err != nil {
 		return nil, err
 	}
-
 	return model, nil
 }
 
@@ -182,52 +154,30 @@ func (u *ModelUsecase) UpdateUsage(ctx context.Context, modelID string, usage *s
 }
 
 func (u *ModelUsecase) SwitchMode(ctx context.Context, req *domain.SwitchModeReq) error {
-	switch consts.ModelSettingMode(req.Mode) {
-	case consts.ModelSettingModeAuto:
-		if req.AutoModeAPIKey == "" {
-			return fmt.Errorf("auto mode api key is required")
-		}
-		modelName := req.ChatModel
-		if modelName == "" {
-			modelName = consts.GetAutoModeDefaultModel(string(domain.ModelTypeChat))
-		}
-		// 检查 API Key 是否有效
-		check, err := u.modelkit.CheckModel(ctx, &modelkitDomain.CheckModelReq{
-			Provider: string(domain.ModelProviderBrandBaiZhiCloud),
-			Model:    modelName,
-			BaseURL:  consts.AutoModeBaseURL,
-			APIKey:   req.AutoModeAPIKey,
-			Type:     string(domain.ModelTypeChat),
-		})
-		if err != nil {
-			return fmt.Errorf("百智云模型 API Key 检查失败: %w", err)
-		}
-		if check.Error != "" {
-			return fmt.Errorf("百智云模型 API Key 检查失败: %s", check.Error)
-		}
-	case consts.ModelSettingModeManual:
-		needModelTypes := []domain.ModelType{
-			domain.ModelTypeChat,
-			domain.ModelTypeEmbedding,
-			domain.ModelTypeRerank,
-			domain.ModelTypeAnalysis,
-		}
-		for _, modelType := range needModelTypes {
-			model, err := u.modelRepo.GetModelByType(ctx, modelType)
-			if err != nil {
-				return fmt.Errorf("需要配置 %s 模型", modelType)
-			}
+	// 仅支持手动模式
+	if consts.ModelSettingMode(req.Mode) != consts.ModelSettingModeManual {
+		return fmt.Errorf("仅支持手动模式 (manual)")
+	}
 
-			if !model.IsActive {
-				if err := u.modelRepo.Updates(ctx, model.ID, map[string]any{
-					"is_active": true,
-				}); err != nil {
-					return err
-				}
+	needModelTypes := []domain.ModelType{
+		domain.ModelTypeChat,
+		domain.ModelTypeEmbedding,
+		domain.ModelTypeRerank,
+		domain.ModelTypeAnalysis,
+	}
+	for _, modelType := range needModelTypes {
+		model, err := u.modelRepo.GetModelByType(ctx, modelType)
+		if err != nil {
+			return fmt.Errorf("需要配置 %s 模型", modelType)
+		}
+
+		if !model.IsActive {
+			if err := u.modelRepo.Updates(ctx, model.ID, map[string]any{
+				"is_active": true,
+			}); err != nil {
+				return err
 			}
 		}
-	default:
-		return fmt.Errorf("invalid req mode: %s", req.Mode)
 	}
 
 	oldModelModeSetting, err := u.GetModelModeSetting(ctx)
@@ -235,18 +185,12 @@ func (u *ModelUsecase) SwitchMode(ctx context.Context, req *domain.SwitchModeReq
 		return err
 	}
 
-	var isResetEmbeddingUpdateFlag = true
-	// 只有切换手动模式时，重置isManualEmbeddingUpdated为false
-	if req.Mode == string(consts.ModelSettingModeManual) {
-		isResetEmbeddingUpdateFlag = false
-	}
-
-	modelModeSetting, err := u.updateModeSettingConfig(ctx, req.Mode, req.AutoModeAPIKey, req.ChatModel, isResetEmbeddingUpdateFlag)
+	_, err = u.updateModeSettingConfig(ctx, req.Mode, "", "", false)
 	if err != nil {
 		return err
 	}
 
-	if err := u.updateRAGModelsByMode(ctx, req.Mode, modelModeSetting.AutoModeAPIKey, oldModelModeSetting); err != nil {
+	if err := u.updateRAGModelsByMode(ctx, req.Mode, "", oldModelModeSetting); err != nil {
 		return err
 	}
 
@@ -306,7 +250,7 @@ func (u *ModelUsecase) GetModelModeSetting(ctx context.Context) (domain.ModelMod
 	return config, nil
 }
 
-// updateRAGModelsByMode 根据模式更新 RAG 模型
+// updateRAGModelsByMode 根据模式更新 RAG 模型（仅手动模式）
 func (u *ModelUsecase) updateRAGModelsByMode(ctx context.Context, mode, autoModeAPIKey string, oldModelModeSetting domain.ModelModeSetting) error {
 	var isTriggerUpsertRecords = true
 
@@ -324,41 +268,23 @@ func (u *ModelUsecase) updateRAGModelsByMode(ctx context.Context, mode, autoMode
 	}
 
 	for _, modelType := range ragModelTypes {
-		var model *domain.Model
-
-		if mode == string(consts.ModelSettingModeManual) {
-			// 获取该类型的活跃模型
-			m, err := u.modelRepo.GetModelByType(ctx, modelType)
-			if err != nil {
-				u.logger.Warn("failed to get model by type", log.String("type", string(modelType)), log.Any("error", err))
-				continue
-			}
-			if m == nil || !m.IsActive {
-				u.logger.Warn("no active model found for type", log.String("type", string(modelType)))
-				continue
-			}
-			model = m
-		} else {
-			modelName := consts.GetAutoModeDefaultModel(string(modelType))
-			model = &domain.Model{
-				Model:    modelName,
-				Type:     modelType,
-				IsActive: true,
-				BaseURL:  consts.AutoModeBaseURL,
-				APIKey:   autoModeAPIKey,
-				Provider: domain.ModelProviderBrandBaiZhiCloud,
-			}
+		// 获取该类型的活跃模型
+		m, err := u.modelRepo.GetModelByType(ctx, modelType)
+		if err != nil {
+			u.logger.Warn("failed to get model by type", log.String("type", string(modelType)), log.Any("error", err))
+			continue
+		}
+		if m == nil || !m.IsActive {
+			u.logger.Warn("no active model found for type", log.String("type", string(modelType)))
+			continue
 		}
 
 		// 更新RAG存储中的模型
-		if model != nil {
-			// rag store中更新失败不影响其他模型更新
-			if err := u.ragStore.UpsertModel(ctx, model); err != nil {
-				u.logger.Error("failed to update model in RAG store", log.String("model_id", model.ID), log.String("type", string(modelType)), log.Any("error", err))
-				return fmt.Errorf("failed to update model in RAG store: %s", model.Type)
-			}
-			u.logger.Info("successfully updated RAG model", log.String("model name: ", string(model.Model)))
+		if err := u.ragStore.UpsertModel(ctx, m); err != nil {
+			u.logger.Error("failed to update model in RAG store", log.String("model_id", m.ID), log.String("type", string(modelType)), log.Any("error", err))
+			return fmt.Errorf("failed to update model in RAG store: %s", m.Type)
 		}
+		u.logger.Info("successfully updated RAG model", log.String("model name: ", string(m.Model)))
 	}
 
 	// 触发记录更新

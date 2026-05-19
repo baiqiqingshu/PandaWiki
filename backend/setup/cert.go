@@ -50,7 +50,7 @@ func createSelfSignedCerts() error {
 	template := x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject: pkix.Name{
-			CommonName: "pandawiki.docs.baizhi.cloud",
+			CommonName: "localhost",
 		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(10, 0, 0), // Certificate valid for 10 year
@@ -58,7 +58,7 @@ func createSelfSignedCerts() error {
 		BasicConstraintsValid: true,
 		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		DNSNames:              []string{"pandawiki.docs.baizhi.cloud"},
+		DNSNames:              []string{"localhost"},
 	}
 
 	// Sign certificate with private key

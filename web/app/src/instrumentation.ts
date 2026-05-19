@@ -1,20 +1,8 @@
-import * as Sentry from '@sentry/nextjs';
+// Sentry has been removed for intranet deployment.
+// No server-side error reporting to external services.
 
 export async function register() {
-  // 只在生产环境下启用 Sentry
-  if (process.env.NODE_ENV === 'production') {
-    if (process.env.NEXT_RUNTIME === 'nodejs') {
-      await import('../sentry.server.config');
-    }
-
-    if (process.env.NEXT_RUNTIME === 'edge') {
-      await import('../sentry.edge.config');
-    }
-  }
+  // No-op: telemetry disabled for intranet deployment
 }
 
-// 只在生产环境下导出错误捕获函数
-export const onRequestError =
-  process.env.NODE_ENV === 'production'
-    ? Sentry.captureRequestError
-    : undefined;
+export const onRequestError = undefined;

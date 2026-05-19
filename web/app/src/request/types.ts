@@ -18,7 +18,7 @@ export enum SchemaRoleType {
 }
 
 export enum GithubComChaitinPandaWikiDomainModelProvider {
-  ModelProviderBrandBaiZhiCloud = "BaiZhiCloud",
+  ModelProviderOpenAI = "OpenAI",
 }
 
 export enum DomainStatPageScene {
@@ -1291,11 +1291,7 @@ export interface DomainStatsSetting {
 }
 
 export interface DomainSwitchModeReq {
-  /** 百智云 API Key */
-  auto_mode_api_key?: string;
-  /** 自定义对话模型名称 */
-  chat_model?: string;
-  mode: "manual" | "auto";
+  mode: "manual";
 }
 
 export interface DomainSwitchModeResp {
