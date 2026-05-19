@@ -31,7 +31,7 @@ const initialState: config = {
     created_at: '',
   },
   license: {
-    edition: 0,
+    edition: 2, // 自部署版本：默认企业版，解锁所有功能
     expired_at: 0,
     started_at: 0,
   },
@@ -82,7 +82,8 @@ const configSlice = createSlice({
       state.modelStatus = payload;
     },
     setLicense(state, { payload }) {
-      state.license = payload;
+      // 自部署版本：强制设为企业版，解锁所有功能
+      state.license = { ...payload, edition: 2 };
     },
     setAppPreviewData(state, { payload }) {
       state.appPreviewData = payload;

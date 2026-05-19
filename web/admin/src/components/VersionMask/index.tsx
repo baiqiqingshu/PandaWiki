@@ -48,97 +48,24 @@ const StyledMaskVersion = styled('div')(({ theme }) => ({
 }));
 
 const VersionMask = ({
-  permission = [
-    ConstsLicenseEdition.LicenseEditionFree,
-    ConstsLicenseEdition.LicenseEditionProfession,
-    ConstsLicenseEdition.LicenseEditionBusiness,
-    ConstsLicenseEdition.LicenseEditionEnterprise,
-  ],
   children,
-  wrapperSx,
-  sx,
 }: {
   permission?: ConstsLicenseEdition[];
   children?: React.ReactNode;
   wrapperSx?: SxProps;
   sx?: SxProps;
 }) => {
-  const versionInfo = useVersionInfo();
-  const hasPermission = permission.includes(versionInfo.permission);
-  if (hasPermission) return children;
-  const nextVersionInfo = VersionInfoMap[permission[0]];
-
-  return (
-    <StyledMaskWrapper sx={wrapperSx}>
-      {children}
-      <StyledMask sx={sx}>
-        <StyledMaskContent>
-          <StyledMaskVersion sx={{ backgroundColor: nextVersionInfo.bgColor }}>
-            <img
-              src={nextVersionInfo.image}
-              style={{ width: 12, objectFit: 'contain', marginTop: 1 }}
-              alt={nextVersionInfo.label}
-            />
-            {nextVersionInfo?.label}可用
-          </StyledMaskVersion>
-        </StyledMaskContent>
-      </StyledMask>
-    </StyledMaskWrapper>
-  );
+  // 自部署版本：跳过版本权限检查，直接渲染子组件
+  return children;
 };
 
-export const VersionCanUse = ({
-  permission = [
-    ConstsLicenseEdition.LicenseEditionFree,
-    ConstsLicenseEdition.LicenseEditionProfession,
-    ConstsLicenseEdition.LicenseEditionBusiness,
-    ConstsLicenseEdition.LicenseEditionEnterprise,
-  ],
-  sx,
-  mode = 'text',
-}: {
+export const VersionCanUse = ({}: {
   permission?: ConstsLicenseEdition[];
   sx?: SxProps;
   mode?: 'icon' | 'text';
 }) => {
-  const versionInfo = useVersionInfo();
-  const hasPermission = permission.includes(versionInfo.permission);
-  if (hasPermission) return null;
-  const nextVersionInfo = VersionInfoMap[permission[0]];
-  return (
-    <StyledMaskContent
-      sx={{
-        width: 'auto',
-        ml: mode === 'icon' ? 0.5 : 1,
-        // 允许 Tooltip 在 disabled 的父元素中正常工作
-        pointerEvents: 'auto',
-        ...sx,
-      }}
-      onClick={e => {
-        e.stopPropagation();
-        e.preventDefault();
-      }}
-    >
-      {mode === 'icon' ? (
-        <Tooltip title={nextVersionInfo.label + '可用'} placement='top' arrow>
-          <img
-            src={nextVersionInfo.image}
-            style={{ width: 14, objectFit: 'contain' }}
-            alt={nextVersionInfo.label}
-          />
-        </Tooltip>
-      ) : (
-        <StyledMaskVersion sx={{ backgroundColor: nextVersionInfo.bgColor }}>
-          <img
-            src={nextVersionInfo.image}
-            style={{ width: 12, objectFit: 'contain', marginTop: 1 }}
-            alt={nextVersionInfo.label}
-          />
-          {nextVersionInfo?.label}可用
-        </StyledMaskVersion>
-      )}
-    </StyledMaskContent>
-  );
+  // 自部署版本：不显示版本限制提示
+  return null;
 };
 
 export default VersionMask;
