@@ -211,8 +211,8 @@ func overrideWithEnv(c *Config) {
 	if env := os.Getenv("SENTRY_DSN"); env != "" {
 		c.Sentry.DSN = env
 	}
-	// caddy api
-	if env := os.Getenv("CADDY_API"); env != "" {
+	// caddy api: allow CADDY_API= to explicitly disable Caddy sync in all-in-one mode.
+	if env, ok := os.LookupEnv("CADDY_API"); ok {
 		c.CaddyAPI = env
 	}
 	// log level
