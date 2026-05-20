@@ -570,7 +570,7 @@ func (r *NodeRepository) GetNodeReleasesByDocIDs(ctx context.Context, ids []stri
 	var nodeReleases []*domain.NodeRelease
 	if err := r.db.WithContext(ctx).
 		Model(&domain.NodeRelease{}).
-		Where("doc_id IN ?", ids).
+		Where("doc_id IN ? OR (doc_id = '' AND id IN ?)", ids, ids).
 		Find(&nodeReleases).Error; err != nil {
 		return nil, err
 	}
@@ -587,6 +587,13 @@ type NodeReleaseWithPath struct {
 	PathIDs   []string `json:"path_ids"`
 	PathNames []string `json:"path_names"`
 	Depth     int      `json:"depth"`
+}
+
+func nodeReleaseDocumentID(nodeRelease *domain.NodeRelease) string {
+	if nodeRelease.DocID != "" {
+		return nodeRelease.DocID
+	}
+	return nodeRelease.ID
 }
 
 // GetNodeReleasesWithPathsByDocIDs retrieving node releases with path information
@@ -609,7 +616,7 @@ func (r *NodeRepository) GetNodeReleasesWithPathsByDocIDs(ctx context.Context, i
 	}
 
 	docIDs := lo.Map(nodeReleases, func(release *domain.NodeRelease, i int) string {
-		return release.DocID
+		return nodeReleaseDocumentID(release)
 	})
 
 	// 2. 批量查询路径
@@ -625,13 +632,14 @@ func (r *NodeRepository) GetNodeReleasesWithPathsByDocIDs(ctx context.Context, i
 			NodeRelease: nr,
 		}
 
-		if path, ok := paths[nr.DocID]; ok {
+		docID := nodeReleaseDocumentID(nr)
+		if path, ok := paths[docID]; ok {
 			nrWithPath.PathIDs = path.PathIDs
 			nrWithPath.PathNames = path.PathNames
 			nrWithPath.Depth = path.Depth
 		}
 
-		result[nr.DocID] = nrWithPath
+		result[docID] = nrWithPath
 	}
 
 	return result, nil
@@ -662,12 +670,12 @@ func (r *NodeRepository) getNodePathsBatch(ctx context.Context, docIDs []string)
 				node_id,
 				parent_id,
 				name,
-				doc_id as root_doc_id,
+				COALESCE(NULLIF(doc_id, ''), id) as root_doc_id,
 				ARRAY[node_id] as path_ids,
 				ARRAY[name] as path_names,
 				1 as depth
 			FROM node_releases
-			WHERE doc_id = ANY($1)
+			WHERE COALESCE(NULLIF(doc_id, ''), id) = ANY($1)
 
 			UNION ALL
 
@@ -681,7 +689,7 @@ func (r *NodeRepository) getNodePathsBatch(ctx context.Context, docIDs []string)
 				np.depth + 1
 			FROM node_releases n
 			INNER JOIN node_paths np ON n.node_id = np.parent_id
-			WHERE np.depth < 20 AND n.doc_id != ''
+			WHERE np.depth < 20
 		)
 		SELECT
 			root_doc_id as doc_id,

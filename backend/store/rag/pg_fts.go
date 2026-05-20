@@ -73,7 +73,7 @@ func (s *PgFTSRAG) QueryRecords(ctx context.Context, req *QueryRecordsRequest) (
 	// 使用 ts_rank_cd 对 tsvector 评分 + ILIKE 命中加权
 	rawSQL := `
 		SELECT 
-			nr.doc_id,
+			COALESCE(NULLIF(nr.doc_id, ''), nr.id) AS doc_id,
 			nr.node_id,
 			nr.name,
 			LEFT(nr.content, 2000) as content,
@@ -85,8 +85,7 @@ func (s *PgFTSRAG) QueryRecords(ctx context.Context, req *QueryRecordsRequest) (
 			) AS score
 		FROM node_releases nr
 		WHERE 
-			nr.doc_id != ''
-			AND nr.doc_id IS NOT NULL
+			nr.type = ?
 			AND (
 				nr.search_vector @@ plainto_tsquery('simple', ?)
 				OR nr.name ILIKE ?
@@ -100,6 +99,7 @@ func (s *PgFTSRAG) QueryRecords(ctx context.Context, req *QueryRecordsRequest) (
 		likePattern, // name ILIKE score
 		likePattern, // summary ILIKE score
 		likePattern, // content ILIKE score
+		domain.NodeTypeDocument,
 		query,       // search_vector @@
 		likePattern, // name ILIKE filter
 		likePattern, // content ILIKE filter
@@ -112,7 +112,7 @@ func (s *PgFTSRAG) QueryRecords(ctx context.Context, req *QueryRecordsRequest) (
 				SELECT 1 FROM kb_release_node_releases krnr
 				INNER JOIN kb_releases kr ON kr.id = krnr.release_id
 				WHERE krnr.node_release_id = nr.id
-				AND kr.kb_id = (SELECT kb_id FROM knowledge_bases WHERE dataset_id = ? LIMIT 1)
+				AND kr.kb_id = (SELECT id FROM knowledge_bases WHERE dataset_id = ? LIMIT 1)
 			)
 		`
 		args = append(args, req.DatasetID)
@@ -177,10 +177,14 @@ func (s *PgFTSRAG) UpsertRecords(ctx context.Context, req *UpsertRecordsRequest)
 	// FTS 模式下，文档内容已经存储在 node_releases 表中
 	// search_vector 由数据库触发器自动更新
 	// 这里只需要确保 doc_id 存在即可
+	docID := req.DocID
+	if docID == "" {
+		docID = req.ID
+	}
 	s.logger.Info("PgFTSRAG: upsert records (handled by DB trigger)",
-		log.String("doc_id", req.DocID),
+		log.String("doc_id", docID),
 		log.String("title", req.Title))
-	return req.DocID, nil
+	return docID, nil
 }
 
 func (s *PgFTSRAG) DeleteRecords(ctx context.Context, datasetID string, docIDs []string) error {
@@ -214,8 +218,8 @@ func (s *PgFTSRAG) ListDocuments(ctx context.Context, datasetID string, document
 	var docs []nodeReleaseDoc
 	if err := s.db.WithContext(ctx).
 		Table("node_releases").
-		Select("doc_id, name, node_id").
-		Where("doc_id IN ?", documentIDs).
+		Select("COALESCE(NULLIF(doc_id, ''), id) AS doc_id, name, node_id").
+		Where("COALESCE(NULLIF(doc_id, ''), id) IN ?", documentIDs).
 		Find(&docs).Error; err != nil {
 		return nil, err
 	}

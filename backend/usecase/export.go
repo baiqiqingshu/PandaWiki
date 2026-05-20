@@ -21,7 +21,7 @@ import (
 	"github.com/chaitin/panda-wiki/store/s3"
 )
 
-var s3URLRegex = regexp.MustCompile(`(https?://[^/]+/static-file/[^\s)"\]]+)`)
+var staticFileURLRegex = regexp.MustCompile(`(?:https?://[^/]+)?/static-file/[^\s)"'\]<]+`)
 
 type ExportUsecase struct {
 	nodeRepo *pg.NodeRepository
@@ -256,7 +256,7 @@ func (u *ExportUsecase) Import(ctx context.Context, req *domain.ImportReq, file 
 
 	// 4. 解析 zip 中的文件结构
 	// 收集所有 meta 文件和内容文件
-	metaFiles := make(map[string][]byte)   // path -> meta json bytes
+	metaFiles := make(map[string][]byte)    // path -> meta json bytes
 	contentFiles := make(map[string][]byte) // path -> content bytes
 	assetFiles := make(map[string][]byte)   // path -> asset bytes
 
@@ -605,7 +605,7 @@ func (u *ExportUsecase) extractAndReplaceAssets(ctx context.Context, content str
 	assets := make([]assetFile, 0)
 	seen := make(map[string]string) // url -> relative path
 
-	content = s3URLRegex.ReplaceAllStringFunc(content, func(url string) string {
+	content = staticFileURLRegex.ReplaceAllStringFunc(content, func(url string) string {
 		if relPath, ok := seen[url]; ok {
 			return relPath
 		}
@@ -617,6 +617,12 @@ func (u *ExportUsecase) extractAndReplaceAssets(ctx context.Context, content str
 			return url
 		}
 		objectKey := parts[1]
+		if idx := strings.IndexAny(objectKey, "?#"); idx >= 0 {
+			objectKey = objectKey[:idx]
+		}
+		if objectKey == "" {
+			return url
+		}
 		filename := filepath.Base(objectKey)
 
 		// 从 MinIO 下载
