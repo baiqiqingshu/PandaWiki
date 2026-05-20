@@ -3,7 +3,7 @@ import Logo from '@/assets/images/logo.png';
 import noDocImage from '@/assets/images/no-doc.png';
 import { useBasePath } from '@/hooks';
 import { useStore } from '@/provider';
-import { postShareV1ChatWidgetSearch } from '@/request';
+import { postShareV1ChatSearch } from '@/request';
 import { DomainNodeContentChunkSSE } from '@/request/types';
 import { getImagePath } from '@/utils/getImagePath';
 import { message } from '@ctzhian/ui';
@@ -140,7 +140,7 @@ const SearchDocContent: React.FC<SearchDocContentProps> = ({
     const token = await (
       await import('@/utils/solveCaptcha')
     ).solveCaptcha(`${basePath}/share/v1/captcha/`);
-    postShareV1ChatWidgetSearch({ message: input, captcha_token: token })
+    postShareV1ChatSearch({ message: input, captcha_token: token })
       .then(res => {
         setSearchResults(res.node_result || []);
         setHasSearch(true);
