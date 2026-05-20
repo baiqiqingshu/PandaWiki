@@ -212,3 +212,49 @@ export const postApiV1ModelSwitchMode = (
     format: "json",
     ...params,
   });
+
+/**
+ * @description get current search mode setting
+ *
+ * @tags model
+ * @name GetApiV1ModelSearchMode
+ * @summary get search mode setting
+ * @request GET:/api/v1/model/search-mode
+ * @response `200` `(DomainResponse & { data?: { mode?: string } })` OK
+ */
+
+export const getApiV1ModelSearchMode = (params: RequestParams = {}) =>
+  httpRequest<
+    DomainResponse & {
+      data?: { mode?: string };
+    }
+  >({
+    path: `/api/v1/model/search-mode`,
+    method: "GET",
+    type: ContentType.Json,
+    format: "json",
+    ...params,
+  });
+
+/**
+ * @description update search mode setting
+ *
+ * @tags model
+ * @name PutApiV1ModelSearchMode
+ * @summary update search mode setting
+ * @request PUT:/api/v1/model/search-mode
+ * @response `200` `DomainResponse` OK
+ */
+
+export const putApiV1ModelSearchMode = (
+  request: { mode: string },
+  params: RequestParams = {},
+) =>
+  httpRequest<DomainResponse>({
+    path: `/api/v1/model/search-mode`,
+    method: "PUT",
+    body: request,
+    type: ContentType.Json,
+    format: "json",
+    ...params,
+  });

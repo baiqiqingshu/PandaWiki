@@ -16,11 +16,13 @@ import CardRobot from './component/CardRobot';
 import CardSecurity from './component/CardSecurity';
 import CardWeb from './component/CardWeb';
 import CardMCP from './component/CardMCP';
+import CardSearchMode from './component/CardSearchMode';
 
 const SettingTabs: { label: string; id: string }[] = [
   { label: '门户网站', id: 'portal-website' },
   { label: 'AI 机器人', id: 'robot' },
   { label: '问答设置', id: 'ai-setting' },
+  { label: '文档搜索', id: 'search-mode' },
   { label: '反馈设置', id: 'feedback' },
   { label: '安全设置', id: 'security' },
   { label: '访问控制', id: 'backend-info' },
@@ -118,6 +120,7 @@ const Setting = () => {
         {activeTab === 'feedback' && <CardFeedback kb={kb} />}
         {activeTab === 'robot' && <CardRobot kb={kb} url={url} />}
         {activeTab === 'portal-website' && <CardWeb kb={kb} refresh={getKb} />}
+        {activeTab === 'search-mode' && <CardSearchMode />}
         {activeTab === 'mcp' && <CardMCP kb={kb} />}
       </Card>
     </Box>
