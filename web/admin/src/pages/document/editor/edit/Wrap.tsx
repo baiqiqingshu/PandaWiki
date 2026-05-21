@@ -717,6 +717,32 @@ const Wrap = ({ detail: defaultDetail }: WrapProps) => {
     }
   }, [id, catalogData, defaultDetail.id, changeCatalogItem]);
 
+  // 拦截编辑器中文档引用链接的点击，将 /node/{id} 重定向到 /doc/editor/{id}
+  useEffect(() => {
+    const handleDocRefClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest('a');
+      if (!anchor) return;
+
+      const href = anchor.getAttribute('href');
+      if (!href) return;
+
+      // 匹配 /node/{uuid} 格式的路径
+      const nodePathMatch = href.match(/^\/node\/([0-9a-f-]+)$/i);
+      if (nodePathMatch) {
+        e.preventDefault();
+        e.stopPropagation();
+        const nodeId = nodePathMatch[1];
+        navigate(`/doc/editor/${nodeId}`);
+      }
+    };
+
+    document.addEventListener('click', handleDocRefClick, true);
+    return () => {
+      document.removeEventListener('click', handleDocRefClick, true);
+    };
+  }, [navigate]);
+
   return (
     <>
       <Box
