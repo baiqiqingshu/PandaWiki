@@ -96,8 +96,11 @@ curl -fsSL https://raw.githubusercontent.com/baiqiqingshu/PandaWiki/main/docker-
 cat > .env << 'EOF'
 # ======= PandaWiki 配置 =======
 
-# Web 访问端口
-WIKI_PORT=8900
+# 管理后台访问端口
+ADMIN_PORT=8900
+
+# Wiki 前台站点端口
+WIKI_SITE_PORT=8005
 
 # 管理员账号密码（账号固定为 admin）
 ADMIN_PASSWORD=admin123
@@ -120,6 +123,13 @@ JWT_SECRET=panda-wiki-jwt-secret-change-me
 
 # 日志级别 (-4=debug, 0=info, 4=warn, 8=error)
 LOG_LEVEL=0
+
+# 检索模式：fts=PostgreSQL 全文检索，noop=关闭检索，ct=CT RAG
+RAG_PROVIDER=fts
+
+# Wiki 站点自动初始化
+WIKI_NAME=PandaWiki
+WIKI_HOST=107.155.15.79
 EOF
 ```
 
@@ -150,11 +160,17 @@ docker logs panda-wiki 2>&1 | tail -20
 
 # 测试 HTTP 访问
 curl -sI http://localhost:8900
+curl -sI http://localhost:8005
 ```
 
 ### 步骤 6：访问 Wiki
 
-浏览器打开 `http://<服务器IP>:8900`
+浏览器打开：
+
+| 入口 | 地址 |
+|------|-----|
+| 管理后台 | `http://<服务器IP>:8900` |
+| Wiki 前台站点 | `http://<服务器IP>:8005` |
 
 | 项目 | 值 |
 |------|-----|
@@ -215,6 +231,7 @@ docker compose up -d --force-recreate panda-wiki
 | 症状 | 原因 | 解决 |
 |------|------|------|
 | 登录提示"用户名或密码错误" | `ADMIN_PASSWORD` 为空或容器未重建 | 设置 `.env` 中的 `ADMIN_PASSWORD`，执行 `docker compose up -d --force-recreate panda-wiki` |
+| Wiki 搜索无结果 | `RAG_PROVIDER` 被设置为 `noop` 或容器未重建 | 设置 `.env` 中 `RAG_PROVIDER=fts`，执行 `docker compose up -d --force-recreate panda-wiki` |
 | 页面显示 "Not Found" | `/api/v1/license` 接口缺失 | 使用最新镜像（已添加 license stub） |
 | consumer 服务 panic | NATS stream 未初始化 | 使用最新镜像（已修复 stream 创建） |
 | 容器反复重启 | 依赖服务未就绪 | `docker compose logs panda-wiki` 查看具体错误 |
@@ -257,7 +274,8 @@ curl -fsSL https://raw.githubusercontent.com/baiqiqingshu/PandaWiki/main/docker-
 
 # 生成 .env
 cat > .env << EOF
-WIKI_PORT=8900
+ADMIN_PORT=8900
+WIKI_SITE_PORT=8005
 ADMIN_PASSWORD=${ADMIN_PWD}
 POSTGRES_PASSWORD=$(openssl rand -hex 16)
 REDIS_PASSWORD=
@@ -266,6 +284,9 @@ MINIO_ROOT_USER=s3panda-wiki
 MINIO_ROOT_PASSWORD=$(openssl rand -hex 16)
 JWT_SECRET=$(openssl rand -hex 32)
 LOG_LEVEL=0
+RAG_PROVIDER=fts
+WIKI_NAME=PandaWiki
+WIKI_HOST=$(hostname -I | awk '{print $1}')
 EOF
 
 # 启动
@@ -273,7 +294,8 @@ docker compose up -d
 
 echo ""
 echo "=== 部署完成 ==="
-echo "访问地址: http://$(hostname -I | awk '{print $1}'):8900"
+echo "管理后台: http://$(hostname -I | awk '{print $1}'):8900"
+echo "Wiki 前台: http://$(hostname -I | awk '{print $1}'):8005"
 echo "账号: admin"
 echo "密码: ${ADMIN_PWD}"
 ```

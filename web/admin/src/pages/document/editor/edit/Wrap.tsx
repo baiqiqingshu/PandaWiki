@@ -43,6 +43,25 @@ interface WrapProps {
   detail: V1NodeDetailResp;
 }
 
+const getNodeIdFromDocRefHref = (href: string) => {
+  const trimmedHref = href.trim();
+  if (!trimmedHref) return null;
+
+  const matchNodePath = (pathname: string) => {
+    const nodePathMatch = pathname.match(/^\/node\/([0-9a-f-]+)\/?$/i);
+    return nodePathMatch?.[1] || null;
+  };
+
+  const directMatch = matchNodePath(trimmedHref);
+  if (directMatch) return directMatch;
+
+  try {
+    return matchNodePath(new URL(trimmedHref, window.location.origin).pathname);
+  } catch {
+    return null;
+  }
+};
+
 const Wrap = ({ detail: defaultDetail }: WrapProps) => {
   const { id = '' } = useParams();
   const navigate = useNavigate();
@@ -720,7 +739,9 @@ const Wrap = ({ detail: defaultDetail }: WrapProps) => {
   // 拦截编辑器中文档引用链接的点击，将 /node/{id} 重定向到 /doc/editor/{id}
   useEffect(() => {
     const handleDocRefClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+
       const anchor = target.closest('a');
       if (!anchor) return;
 
@@ -728,11 +749,10 @@ const Wrap = ({ detail: defaultDetail }: WrapProps) => {
       if (!href) return;
 
       // 匹配 /node/{uuid} 格式的路径
-      const nodePathMatch = href.match(/^\/node\/([0-9a-f-]+)$/i);
-      if (nodePathMatch) {
+      const nodeId = getNodeIdFromDocRefHref(href);
+      if (nodeId) {
         e.preventDefault();
         e.stopPropagation();
-        const nodeId = nodePathMatch[1];
         navigate(`/doc/editor/${nodeId}`);
       }
     };
