@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -434,6 +435,16 @@ func (u *ChatUsecase) replaceWithSimpleString(content string, filter *utils.DFA)
 }
 
 func (u *ChatUsecase) Search(ctx context.Context, req *domain.ChatSearchReq) (*domain.ChatSearchResp, error) {
+	if req.AuthUserID == 0 {
+		auth, err := u.AuthRepo.GetAuthByKBIDAndSourceType(ctx, req.KBID, domain.AppTypeWeb.ToSourceType())
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+		if auth != nil {
+			req.AuthUserID = auth.ID
+		}
+	}
+
 	groupIds, err := u.AuthRepo.GetAuthGroupIdsWithParentsByAuthId(ctx, req.AuthUserID)
 	if err != nil {
 		return nil, err
@@ -446,8 +457,9 @@ func (u *ChatUsecase) Search(ctx context.Context, req *domain.ChatSearchReq) (*d
 		DatasetID:           kb.DatasetID,
 		Question:            req.Message,
 		GroupIDs:            groupIds,
-		SimilarityThreshold: 0.2,
+		SimilarityThreshold: 0,
 		HistoryMessages:     nil,
+		MaxChunksPerDoc:     1,
 	})
 	if err != nil {
 		return nil, err

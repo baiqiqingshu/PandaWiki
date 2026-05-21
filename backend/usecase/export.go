@@ -5,15 +5,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
+	"gorm.io/gorm"
 
 	"github.com/chaitin/panda-wiki/domain"
 	"github.com/chaitin/panda-wiki/log"
@@ -22,6 +25,7 @@ import (
 )
 
 var staticFileURLRegex = regexp.MustCompile(`(?:https?://[^/]+)?/static-file/[^\s)"'\]<]+`)
+var nodeReferenceRegex = regexp.MustCompile(`(/node/)([0-9a-fA-F-]{36})(#[^\s)"'\]<]*)?`)
 
 type ExportUsecase struct {
 	nodeRepo *pg.NodeRepository
@@ -348,9 +352,78 @@ func (u *ExportUsecase) Import(ctx context.Context, req *domain.ImportReq, file 
 			documents = append(documents, item)
 		}
 	}
+	metaByID := make(map[string]*domain.ExportNodeMeta)
+	for _, item := range folders {
+		if item.meta.ID != "" {
+			metaByID[item.meta.ID] = item.meta
+		}
+	}
+	nodeDepth := func(meta *domain.ExportNodeMeta) int {
+		depth := 0
+		seen := map[string]struct{}{}
+		for meta.ParentID != "" {
+			if _, ok := seen[meta.ParentID]; ok {
+				break
+			}
+			seen[meta.ParentID] = struct{}{}
+			parent, ok := metaByID[meta.ParentID]
+			if !ok {
+				break
+			}
+			depth++
+			meta = parent
+		}
+		return depth
+	}
+	sort.SliceStable(folders, func(i, j int) bool {
+		return nodeDepth(folders[i].meta) < nodeDepth(folders[j].meta)
+	})
 
-	// 旧ID -> 新ID 映射（用于还原父子关系）
+	// 旧ID -> 实际导入ID 映射（用于还原父子关系和文档内引用）
 	idMapping := make(map[string]string)
+	planImportID := func(item *importItem) error {
+		if item.meta.ID == "" {
+			return nil
+		}
+
+		parentID := ""
+		if item.meta.ParentID != "" {
+			if mappedParentID, ok := idMapping[item.meta.ParentID]; ok {
+				parentID = mappedParentID
+			}
+		}
+		if existing, ok := existingNameMap[parentID+"/"+item.meta.Name]; ok {
+			if conflictStrategy == "skip" || conflictStrategy == "overwrite" {
+				idMapping[item.meta.ID] = existing.ID
+				return nil
+			}
+		}
+
+		if _, err := u.nodeRepo.GetNodeByID(ctx, item.meta.ID); err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return fmt.Errorf("check existing node id failed: %w", err)
+			}
+			idMapping[item.meta.ID] = item.meta.ID
+			return nil
+		}
+
+		nodeID, err := uuid.NewV7()
+		if err != nil {
+			nodeID = uuid.New()
+		}
+		idMapping[item.meta.ID] = nodeID.String()
+		return nil
+	}
+	for _, item := range folders {
+		if err := planImportID(item); err != nil {
+			return nil, err
+		}
+	}
+	for _, item := range documents {
+		if err := planImportID(item); err != nil {
+			return nil, err
+		}
+	}
 
 	// 先创建文件夹
 	for _, item := range folders {
@@ -438,15 +511,13 @@ func (u *ExportUsecase) importNode(
 	if existing, ok := existingNameMap[key]; ok {
 		switch conflictStrategy {
 		case "skip":
-			// 对于文件夹，仍然需要记录映射关系
-			if meta.Type == domain.NodeTypeFolder {
-				idMapping[meta.ID] = existing.ID
-			}
+			idMapping[meta.ID] = existing.ID
 			return "", nil
 		case "overwrite":
 			// 覆盖：更新现有节点内容
 			if meta.Type == domain.NodeTypeDocument && content != nil {
 				contentStr := u.processImportContent(ctx, string(content), kbID, assetFiles)
+				contentStr = rewriteNodeReferences(contentStr, idMapping)
 				contentPtr := &contentStr
 				namePtr := &meta.Name
 				err := u.nodeRepo.UpdateNodeContent(ctx, &domain.UpdateNodeReq{
@@ -470,6 +541,7 @@ func (u *ExportUsecase) importNode(
 	contentStr := ""
 	if content != nil {
 		contentStr = u.processImportContent(ctx, string(content), kbID, assetFiles)
+		contentStr = rewriteNodeReferences(contentStr, idMapping)
 	}
 
 	// 创建节点
@@ -479,8 +551,13 @@ func (u *ExportUsecase) importNode(
 		contentType = "md"
 	}
 	summary := meta.Summary
+	preferredID := ""
+	if meta.ID != "" {
+		preferredID = idMapping[meta.ID]
+	}
 
 	createReq := &domain.CreateNodeReq{
+		ID:          preferredID,
 		KBID:        kbID,
 		NavId:       navID,
 		ParentID:    parentID,
@@ -539,6 +616,19 @@ func (u *ExportUsecase) processImportContent(ctx context.Context, content string
 	})
 
 	return content
+}
+
+func rewriteNodeReferences(content string, idMapping map[string]string) string {
+	return nodeReferenceRegex.ReplaceAllStringFunc(content, func(match string) string {
+		parts := nodeReferenceRegex.FindStringSubmatch(match)
+		if len(parts) < 3 {
+			return match
+		}
+		if newID, ok := idMapping[parts[2]]; ok && newID != "" {
+			return parts[1] + newID + parts[3]
+		}
+		return match
+	})
 }
 
 // buildExportPath 构建导出文件的目录路径

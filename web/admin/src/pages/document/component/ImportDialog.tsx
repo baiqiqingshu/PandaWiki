@@ -49,19 +49,33 @@ const ImportDialog = ({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
 
+  const selectFile = useCallback((nextFile: File) => {
+    if (!nextFile.name.toLowerCase().endsWith('.zip')) {
+      message.error('请选择 .zip 文件');
+      return;
+    }
+    setFile(nextFile);
+  }, []);
+
   const handleFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (files && files.length > 0) {
-        const f = files[0];
-        if (!f.name.endsWith('.zip')) {
-          message.error('请选择 .zip 文件');
-          return;
-        }
-        setFile(f);
+        selectFile(files[0]);
+        e.target.value = '';
       }
     },
-    [],
+    [selectFile],
+  );
+
+  const handleFileDrop = useCallback(
+    (e: React.DragEvent<HTMLLabelElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const droppedFile = e.dataTransfer.files?.[0];
+      if (droppedFile) selectFile(droppedFile);
+    },
+    [selectFile],
   );
 
   const handleImport = async () => {
@@ -79,8 +93,8 @@ const ImportDialog = ({
         `导入完成：成功 ${res.imported_count}，跳过 ${res.skipped_count}，失败 ${res.failed_count}`,
       );
       refresh();
-    } catch (err: any) {
-      message.error(err?.message || '导入失败');
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '导入失败');
     } finally {
       setLoading(false);
     }
@@ -157,6 +171,11 @@ const ImportDialog = ({
                       bgcolor: 'rgba(25, 118, 210, 0.02)',
                     },
                   }}
+                  onDragOver={e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={handleFileDrop}
                 >
                   <CloudUploadOutlined
                     sx={{ fontSize: 36, color: 'text.disabled', mb: 1 }}

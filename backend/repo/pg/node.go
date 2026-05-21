@@ -33,11 +33,14 @@ func NewNodeRepository(db *pg.DB, logger *log.Logger) *NodeRepository {
 }
 
 func (r *NodeRepository) Create(ctx context.Context, req *domain.CreateNodeReq, userId string) (string, error) {
-	nodeID, err := uuid.NewV7()
-	if err != nil {
-		return "", err
+	nodeIDStr := req.ID
+	if nodeIDStr == "" {
+		nodeID, err := uuid.NewV7()
+		if err != nil {
+			return "", err
+		}
+		nodeIDStr = nodeID.String()
 	}
-	nodeIDStr := nodeID.String()
 	err = r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// check count
 		var count int64
