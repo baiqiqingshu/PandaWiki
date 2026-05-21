@@ -28,8 +28,8 @@ services:
       - CADDY_API=
       # Sentry (禁用)
       - SENTRY_ENABLED=false
-      # RAG Provider (noop=无RAG服务, ct=CT RAG)
-      - RAG_PROVIDER=${RAG_PROVIDER:-noop}
+      # RAG Provider (fts=PostgreSQL full-text search, noop=disable search, ct=CT RAG)
+      - RAG_PROVIDER=${RAG_PROVIDER:-fts}
       # Wiki 站点自动初始化
       - WIKI_NAME=${WIKI_NAME:-PandaWiki}
       - WIKI_SITE_PORT=${WIKI_SITE_PORT:-8005}

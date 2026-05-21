@@ -609,7 +609,7 @@ func (r *NodeRepository) GetNodeReleasesWithPathsByDocIDs(ctx context.Context, i
 	var nodeReleases []*domain.NodeRelease
 	if err := r.db.WithContext(ctx).
 		Model(&domain.NodeRelease{}).
-		Where("doc_id IN ?", ids).
+		Where("doc_id IN ? OR (doc_id = '' AND id IN ?)", ids, ids).
 		Find(&nodeReleases).Error; err != nil {
 		return nil, err
 	}

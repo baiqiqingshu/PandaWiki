@@ -94,6 +94,11 @@ jobs:
             cat > .env << 'ENVEOF'
             ${{ secrets.ENV_FILE }}
             ENVEOF
+            if grep -q '^RAG_PROVIDER=' .env; then
+              sed -i 's/^RAG_PROVIDER=[[:space:]]*noop[[:space:]]*$/RAG_PROVIDER=fts/' .env
+            else
+              printf '\nRAG_PROVIDER=fts\n' >> .env
+            fi
 
             # 登录 GHCR（GH_PAT 未配置时跳过，适用于 public 镜像）
             GH_PAT="${{ secrets.GH_PAT }}"
