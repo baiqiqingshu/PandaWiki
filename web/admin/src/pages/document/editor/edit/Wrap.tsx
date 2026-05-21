@@ -48,12 +48,16 @@ const getNodeIdFromDocRefHref = (href: string) => {
   if (!trimmedHref) return null;
 
   const matchNodePath = (pathname: string) => {
-    const nodePathMatch = pathname.match(/^\/node\/([0-9a-f-]+)\/?$/i);
+    const basename = window.__BASENAME__?.replace(/\/$/, '') || '';
+    const normalizedPathname =
+      basename && (pathname === basename || pathname.startsWith(`${basename}/`))
+        ? pathname.slice(basename.length) || '/'
+        : pathname;
+    const nodePathMatch = normalizedPathname.match(
+      /^\/(?:node|doc\/editor)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i,
+    );
     return nodePathMatch?.[1] || null;
   };
-
-  const directMatch = matchNodePath(trimmedHref);
-  if (directMatch) return directMatch;
 
   try {
     return matchNodePath(new URL(trimmedHref, window.location.origin).pathname);
@@ -739,8 +743,18 @@ const Wrap = ({ detail: defaultDetail }: WrapProps) => {
   // 拦截编辑器中文档引用链接的点击，将 /node/{id} 重定向到 /doc/editor/{id}
   useEffect(() => {
     const handleDocRefClick = (e: MouseEvent) => {
-      const target = e.target;
-      if (!(target instanceof Element)) return;
+      if (e.button !== 0) return;
+
+      const target =
+        e.target instanceof Element
+          ? e.target
+          : e.target instanceof Node
+            ? e.target.parentElement
+            : null;
+      if (!target) return;
+
+      const editorContainer = target.closest('.tiptap.ProseMirror');
+      if (!editorContainer) return;
 
       const anchor = target.closest('a');
       if (!anchor) return;
@@ -753,12 +767,15 @@ const Wrap = ({ detail: defaultDetail }: WrapProps) => {
       if (nodeId) {
         e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
         navigate(`/doc/editor/${nodeId}`);
       }
     };
 
+    window.addEventListener('click', handleDocRefClick, true);
     document.addEventListener('click', handleDocRefClick, true);
     return () => {
+      window.removeEventListener('click', handleDocRefClick, true);
       document.removeEventListener('click', handleDocRefClick, true);
     };
   }, [navigate]);
