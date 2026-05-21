@@ -244,7 +244,41 @@ function processUrl(url: string, basename: string): string {
   return normalizedBasename + normalizedUrl;
 }
 
-// 包装 window.open，自动处理 basename
+// 从 URL 中提取 /node/{uuid} 的 nodeId，用于编辑器内文档引用跳转
+function extractNodeIdFromUrl(url: string, basename: string): string | null {
+  try {
+    const urlObj = new URL(url, window.location.origin);
+    let pathname = urlObj.pathname;
+    // 去掉 basename 前缀
+    const normalizedBasename = basename.replace(/\/$/, '');
+    if (
+      normalizedBasename &&
+      (pathname === normalizedBasename ||
+        pathname.startsWith(`${normalizedBasename}/`))
+    ) {
+      pathname = pathname.slice(normalizedBasename.length) || '/';
+    }
+    const match = pathname.match(
+      /^\/node\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i,
+    );
+    return match?.[1] || null;
+  } catch {
+    return null;
+  }
+}
+
+// 检查当前页面是否在后台编辑器中
+function isInEditorPage(): boolean {
+  const pathname = window.location.pathname;
+  const basename = (window.__BASENAME__ || '').replace(/\/$/, '');
+  const normalizedPathname =
+    basename && (pathname === basename || pathname.startsWith(`${basename}/`))
+      ? pathname.slice(basename.length) || '/'
+      : pathname;
+  return normalizedPathname.startsWith('/doc/editor');
+}
+
+// 包装 window.open，自动处理 basename，并拦截编辑器内文档引用跳转
 export function wrapWindowOpen(basename: string): void {
   const originalOpen = window.open;
 
@@ -255,6 +289,20 @@ export function wrapWindowOpen(basename: string): void {
   ): Window | null {
     // 如果 url 是字符串，处理 basename
     if (typeof url === 'string' && url) {
+      // 在编辑器页面中，拦截 /node/{uuid} 的跳转，转为 SPA 导航到 /doc/editor/{uuid}
+      if (isInEditorPage()) {
+        // 处理绝对 URL 和相对路径
+        const nodeId = extractNodeIdFromUrl(url, basename);
+        if (nodeId) {
+          // 使用 SPA 导航而不是 window.open 来避免离开当前页面
+          const editorPath = `${basename}/doc/editor/${nodeId}`;
+          // 通过 history API + popstate 触发 React Router 导航
+          window.history.pushState(null, '', editorPath);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+          return window;
+        }
+      }
+
       const processedUrl = processUrl(url, basename);
       return originalOpen.call(window, processedUrl, target, features);
     }
