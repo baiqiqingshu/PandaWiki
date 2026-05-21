@@ -88,7 +88,11 @@ const Header = ({
       return;
     }
     const host = currentKb?.access_settings?.hosts?.[0] || '';
-    if (host === '') return;
+    if (host === '') {
+      // 没有配置域名时，使用当前页面的 origin 作为前台地址
+      setWikiUrl(window.location.origin);
+      return;
+    }
     const { ssl_ports = [], ports = [] } = currentKb?.access_settings || {};
 
     if (ssl_ports) {
@@ -98,6 +102,9 @@ const Header = ({
     } else if (ports) {
       if (ports.includes(80)) setWikiUrl(`http://${host}`);
       else if (ports.length > 0) setWikiUrl(`http://${host}:${ports[0]}`);
+    } else {
+      // 端口也未配置时，使用当前页面的 origin
+      setWikiUrl(window.location.origin);
     }
   }, [currentKb]);
 

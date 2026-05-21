@@ -60,6 +60,7 @@ const CardRobotWebComponent = ({ kb }: CardRobotWebComponentProps) => {
       copyright_hide_enabled: '0',
       copyright_info: '',
       search_mode: 'all',
+      default_search_tab: 'doc',
       placeholder: '',
       recommend_questions: [] as string[],
       // recommend_node_ids: [] as string[],
@@ -114,6 +115,7 @@ const CardRobotWebComponent = ({ kb }: CardRobotWebComponentProps) => {
         btn_logo: widget?.btn_logo || '',
         modal_position: widget?.modal_position || 'follow',
         search_mode: widget?.search_mode || 'all',
+        default_search_tab: widget?.default_search_tab || 'doc',
         placeholder: widget?.placeholder || '',
         disclaimer: widget?.disclaimer || '',
         copyright_hide_enabled:
@@ -551,6 +553,39 @@ const CardRobotWebComponent = ({ kb }: CardRobotWebComponentProps) => {
                         )}
                       />
                     </FormItem>
+                    {watch('search_mode') === 'all' && (
+                      <FormItem
+                        label='默认搜索标签页'
+                        sx={{ alignItems: 'flex-start' }}
+                        labelSx={{ mt: 1 }}
+                      >
+                        <Controller
+                          control={control}
+                          name='default_search_tab'
+                          render={({ field }) => (
+                            <RadioGroup
+                              row
+                              {...field}
+                              onChange={e => {
+                                field.onChange(e.target.value);
+                                setIsEdit(true);
+                              }}
+                            >
+                              <FormControlLabel
+                                value='doc'
+                                control={<Radio size='small' />}
+                                label={<Box sx={{ width: 100 }}>文档搜索</Box>}
+                              />
+                              <FormControlLabel
+                                value='qa'
+                                control={<Radio size='small' />}
+                                label={<Box sx={{ width: 100 }}>智能问答</Box>}
+                              />
+                            </RadioGroup>
+                          )}
+                        />
+                      </FormItem>
+                    )}
                     <FormItem
                       label='搜索提示'
                       sx={{ alignItems: 'flex-start' }}

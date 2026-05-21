@@ -499,6 +499,7 @@ func (u *LLMUsecase) GetRankNodes(ctx context.Context, req GetRankNodesRequest) 
 						NodeSummary:   docNode.Meta.Summary,
 						NodeEmoji:     docNode.Meta.Emoji,
 						NodePathNames: docNode.PathNames,
+						MatchSnippet:  record.MatchSnippet,
 						Chunks:        []*domain.NodeContentChunk{record},
 					}
 					rankedNodes = append(rankedNodes, rankNodeChunk)

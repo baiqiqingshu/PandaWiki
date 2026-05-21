@@ -208,7 +208,10 @@ const Content = () => {
       return;
     }
     const host = currentKb?.access_settings?.hosts?.[0] || '';
-    if (host === '') return;
+    if (host === '') {
+      setWikiUrl(window.location.origin);
+      return;
+    }
     const { ssl_ports = [], ports = [] } = currentKb?.access_settings || {};
 
     if (ssl_ports) {
@@ -218,6 +221,8 @@ const Content = () => {
     } else if (ports) {
       if (ports.includes(80)) setWikiUrl(`http://${host}`);
       else if (ports.length > 0) setWikiUrl(`http://${host}:${ports[0]}`);
+    } else {
+      setWikiUrl(window.location.origin);
     }
   }, [currentKb]);
 

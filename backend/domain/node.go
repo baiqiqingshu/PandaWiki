@@ -186,9 +186,10 @@ type NodeContentChunk struct {
 	KBID  string `json:"kb_id"`
 	DocID string `json:"doc_id"`
 
-	Seq     uint   `json:"seq"`
-	Name    string `json:"name"`
-	Content string `json:"content"`
+	Seq          uint   `json:"seq"`
+	Name         string `json:"name"`
+	Content      string `json:"content"`
+	MatchSnippet string `json:"match_snippet,omitempty"` // PG FTS 检索时的匹配段落摘要
 }
 
 type RankedNodeChunks struct {
@@ -197,6 +198,7 @@ type RankedNodeChunks struct {
 	NodeSummary   string
 	NodeEmoji     string
 	NodePathNames []string
+	MatchSnippet  string // PG FTS 匹配段落摘要
 	Chunks        []*NodeContentChunk
 }
 

@@ -68,7 +68,14 @@ const Widget = () => {
 
   const [searchMode, setSearchMode] = useState<
     WidgetInfo['settings']['widget_bot_settings']['search_mode']
-  >(defaultSearchMode !== 'doc' ? 'qa' : 'doc');
+  >(() => {
+    if (defaultSearchMode === 'qa') return 'qa';
+    if (defaultSearchMode === 'doc') return 'doc';
+    // search_mode === 'all': 使用可配置的默认标签页，默认为 'doc'
+    const defaultTab =
+      widget?.settings?.widget_bot_settings?.default_search_tab || 'doc';
+    return defaultTab as 'qa' | 'doc';
+  });
   const inputRef = useRef<HTMLInputElement>(null);
   const aiQaInputRef = useRef<HTMLInputElement>(null);
 

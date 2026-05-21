@@ -451,6 +451,7 @@ type WidgetBotSettings struct {
 	BtnPosition          string   `json:"btn_position,omitempty"`
 	ModalPosition        string   `json:"modal_position,omitempty"`
 	SearchMode           string   `json:"search_mode,omitempty"`
+	DefaultSearchTab     string   `json:"default_search_tab,omitempty"`
 	Placeholder          string   `json:"placeholder,omitempty"`
 	Disclaimer           string   `json:"disclaimer,omitempty"`
 	CopyrightInfo        string   `json:"copyright_info,omitempty"`

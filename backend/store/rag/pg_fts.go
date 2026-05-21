@@ -60,23 +60,32 @@ func (s *PgFTSRAG) QueryRecords(ctx context.Context, req *QueryRecordsRequest) (
 	}
 
 	type scoredDoc struct {
-		DocID   string  `gorm:"column:doc_id"`
-		NodeID  string  `gorm:"column:node_id"`
-		Name    string  `gorm:"column:name"`
-		Content string  `gorm:"column:content"`
-		Score   float64 `gorm:"column:score"`
+		DocID        string  `gorm:"column:doc_id"`
+		NodeID       string  `gorm:"column:node_id"`
+		Name         string  `gorm:"column:name"`
+		Content      string  `gorm:"column:content"`
+		MatchSnippet string  `gorm:"column:match_snippet"`
+		Score        float64 `gorm:"column:score"`
 	}
 
 	var results []scoredDoc
 
 	// 构建查询 SQL
 	// 使用 ts_rank_cd 对 tsvector 评分 + ILIKE 命中加权
+	// 使用 ts_headline 提取匹配段落作为摘要
 	rawSQL := `
 		SELECT 
 			COALESCE(NULLIF(nr.doc_id, ''), nr.id) AS doc_id,
 			nr.node_id,
 			nr.name,
 			LEFT(nr.content, 2000) as content,
+			CASE 
+				WHEN nr.search_vector @@ plainto_tsquery('simple', ?) THEN
+					ts_headline('simple', nr.content, plainto_tsquery('simple', ?), 
+						'MaxWords=60, MinWords=20, MaxFragments=1, StartSel=, StopSel=')
+				ELSE
+					''
+			END as match_snippet,
 			(
 				ts_rank_cd(COALESCE(nr.search_vector, ''::tsvector), plainto_tsquery('simple', ?)) * 100 +
 				CASE WHEN nr.name ILIKE ? THEN 10 ELSE 0 END +
@@ -95,6 +104,8 @@ func (s *PgFTSRAG) QueryRecords(ctx context.Context, req *QueryRecordsRequest) (
 
 	likePattern := "%" + query + "%"
 	args := []interface{}{
+		query,       // ts_headline query
+		query,       // ts_headline plainto_tsquery
 		query,       // ts_rank_cd
 		likePattern, // name ILIKE score
 		likePattern, // summary ILIKE score
@@ -163,14 +174,61 @@ func (s *PgFTSRAG) QueryRecords(ctx context.Context, req *QueryRecordsRequest) (
 		if r.Score < threshold {
 			continue
 		}
+		snippet := r.MatchSnippet
+		// 如果 ts_headline 没有返回结果（ILIKE 命中的情况），手动从 content 中提取匹配段落
+		if snippet == "" && r.Content != "" {
+			snippet = s.extractSnippet(r.Content, query, 150)
+		}
 		nodeChunks = append(nodeChunks, &domain.NodeContentChunk{
-			ID:      r.DocID,
-			Content: r.Content,
-			DocID:   r.DocID,
+			ID:           r.DocID,
+			Content:      r.Content,
+			DocID:        r.DocID,
+			MatchSnippet: snippet,
 		})
 	}
 
 	return query, nodeChunks, nil
+}
+
+// extractSnippet 从 content 中提取包含 query 的段落片段
+func (s *PgFTSRAG) extractSnippet(content, query string, maxLen int) string {
+	lowerContent := strings.ToLower(content)
+	lowerQuery := strings.ToLower(query)
+	idx := strings.Index(lowerContent, lowerQuery)
+	if idx == -1 {
+		// 未找到精确匹配，返回开头部分
+		if len([]rune(content)) > maxLen {
+			return string([]rune(content)[:maxLen]) + "..."
+		}
+		return content
+	}
+
+	// 以匹配位置为中心，向前后扩展
+	runes := []rune(content)
+	runeIdx := len([]rune(content[:idx]))
+	halfWindow := maxLen / 2
+
+	start := runeIdx - halfWindow
+	if start < 0 {
+		start = 0
+	}
+	end := start + maxLen
+	if end > len(runes) {
+		end = len(runes)
+		start = end - maxLen
+		if start < 0 {
+			start = 0
+		}
+	}
+
+	snippet := string(runes[start:end])
+	if start > 0 {
+		snippet = "..." + snippet
+	}
+	if end < len(runes) {
+		snippet = snippet + "..."
+	}
+	return snippet
 }
 
 func (s *PgFTSRAG) UpsertRecords(ctx context.Context, req *UpsertRecordsRequest) (string, error) {

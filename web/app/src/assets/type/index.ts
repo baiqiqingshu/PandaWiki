@@ -122,6 +122,7 @@ export type WidgetInfo = {
       recommend_questions?: string[];
       theme_mode?: string;
       search_mode?: string;
+      default_search_tab?: string;
       placeholder?: string;
       disclaimer?: string;
       copyright_hide_enabled?: boolean;

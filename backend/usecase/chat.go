@@ -504,10 +504,15 @@ func (u *ChatUsecase) Search(ctx context.Context, req *domain.ChatSearchReq) (*d
 			}
 		}
 
+		// 优先使用 PG FTS 匹配段落作为摘要，其次使用 AI 生成的摘要
+		summary := node.NodeSummary
+		if node.MatchSnippet != "" {
+			summary = node.MatchSnippet
+		}
 		chunkResult := domain.NodeContentChunkSSE{
 			NodeID:        node.NodeID,
 			Name:          node.NodeName,
-			Summary:       node.NodeSummary,
+			Summary:       summary,
 			Emoji:         node.NodeEmoji,
 			NodePathNames: node.NodePathNames,
 		}
