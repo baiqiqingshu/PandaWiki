@@ -75,9 +75,19 @@ const StyledTab = styled(Tab)(({ theme }) => ({
   },
 }));
 
+const SEARCH_TAB_CACHE_KEY = 'panda_wiki_qa_modal_tab';
+
 const QaModal: React.FC<QaModalProps> = () => {
   const { qaModalOpen, setQaModalOpen, kbDetail, mobile } = useStore();
-  const [searchMode, setSearchMode] = useState<'chat' | 'search'>('chat');
+  const [searchMode, setSearchMode] = useState<'chat' | 'search'>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem(SEARCH_TAB_CACHE_KEY);
+        if (cached === 'chat' || cached === 'search') return cached;
+      }
+    } catch {}
+    return 'chat';
+  });
   const inputRef = useRef<HTMLInputElement>(null);
   const aiQaInputRef = useRef<HTMLInputElement>(null);
   const searchParams = useSearchParams();
@@ -111,14 +121,6 @@ const QaModal: React.FC<QaModalProps> = () => {
       }, 100);
     }
   }, [qaModalOpen, searchMode]);
-
-  useEffect(() => {
-    if (!qaModalOpen) {
-      setTimeout(() => {
-        setSearchMode('chat');
-      }, 300);
-    }
-  }, [qaModalOpen]);
 
   useEffect(() => {
     const cid = searchParams.get('cid');
@@ -170,6 +172,9 @@ const QaModal: React.FC<QaModalProps> = () => {
             value={searchMode}
             onChange={(_, value) => {
               setSearchMode(value as 'chat' | 'search');
+              try {
+                localStorage.setItem(SEARCH_TAB_CACHE_KEY, value as string);
+              } catch {}
             }}
             variant='scrollable'
             scrollButtons={false}

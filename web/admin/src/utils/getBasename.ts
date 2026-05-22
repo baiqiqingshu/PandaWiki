@@ -244,8 +244,11 @@ function processUrl(url: string, basename: string): string {
   return normalizedBasename + normalizedUrl;
 }
 
-// 从 URL 中提取 /node/{uuid} 的 nodeId，用于编辑器内文档引用跳转
-function extractNodeIdFromUrl(url: string, basename: string): string | null {
+// 从 URL 中提取 /node/{uuid} 的 nodeId 与 hash，用于编辑器内文档引用跳转
+function extractNodeRefFromUrl(
+  url: string,
+  basename: string,
+): { nodeId: string; hash: string } | null {
   try {
     const urlObj = new URL(url, window.location.origin);
     let pathname = urlObj.pathname;
@@ -261,7 +264,8 @@ function extractNodeIdFromUrl(url: string, basename: string): string | null {
     const match = pathname.match(
       /^\/node\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i,
     );
-    return match?.[1] || null;
+    if (!match) return null;
+    return { nodeId: match[1], hash: urlObj.hash || '' };
   } catch {
     return null;
   }
@@ -293,10 +297,11 @@ export function wrapWindowOpen(basename: string): void {
       const shouldOpenInCurrentTab = !target || target === '_self';
       if (shouldOpenInCurrentTab && isInEditorPage()) {
         // 处理绝对 URL 和相对路径
-        const nodeId = extractNodeIdFromUrl(url, basename);
-        if (nodeId) {
+        const ref = extractNodeRefFromUrl(url, basename);
+        if (ref) {
           // 使用 SPA 导航而不是 window.open 来避免离开当前页面
-          const editorPath = `${basename}/doc/editor/${nodeId}`;
+          // hash 一并附上，便于后续在编辑器内实现章节定位
+          const editorPath = `${basename}/doc/editor/${ref.nodeId}${ref.hash}`;
           // 通过 history API + popstate 触发 React Router 导航
           window.history.pushState(null, '', editorPath);
           window.dispatchEvent(new PopStateEvent('popstate'));

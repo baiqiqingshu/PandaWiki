@@ -3,9 +3,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const useScroll = (headings: TocList, domId: string, defaultOffset = 80) => {
   const [activeHeading, setActiveHeading] = useState<TocItem | null>(null);
-  const isFirstLoad = useRef(true);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isManualScroll = useRef(false);
+  // 记录已经"应用过 hash 滚动"的 key，避免同一文档内重复触发
+  const lastAppliedKeyRef = useRef<string>('');
 
   const debounce = <T extends (...args: any[]) => any>(
     func: T,
@@ -95,42 +96,66 @@ const useScroll = (headings: TocList, domId: string, defaultOffset = 80) => {
     [findActiveHeading, activeHeading],
   );
 
-  useEffect(() => {
-    if (isFirstLoad.current && headings.length > 0) {
-      const hash = decodeURIComponent(location.hash).slice(1);
-      if (hash) {
-        const targetHeading = headings.find(
-          header => header.textContent === hash,
-        );
-        if (targetHeading) {
-          setActiveHeading(targetHeading);
-          setTimeout(() => {
-            isManualScroll.current = true;
-            const element = document.getElementById(targetHeading.id);
-            if (element) {
-              const container = document.getElementById(domId) || window;
-              const elementPosition = element.getBoundingClientRect().top;
-              const scrollTop =
-                'scrollY' in container
-                  ? container.scrollY
-                  : container.scrollTop;
-              const offsetPosition =
-                elementPosition + scrollTop - defaultOffset;
-
-              container.scrollTo({
-                top: offsetPosition,
-                behavior: 'smooth',
-              });
-            }
-            setTimeout(() => {
-              isManualScroll.current = false;
-            }, 1000);
-          }, 100);
-        }
-      }
-      isFirstLoad.current = false;
+  // 读取 location.hash 并尝试滚动到匹配的 heading；可重复调用。
+  const applyHashScroll = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (!headings || headings.length === 0) return;
+    const rawHash = location.hash;
+    if (!rawHash) return;
+    let hash = '';
+    try {
+      hash = decodeURIComponent(rawHash.slice(1));
+    } catch {
+      hash = rawHash.slice(1);
     }
+    if (!hash) return;
+    // 避免同一文档同一 hash 重复触发
+    const key = `${location.pathname}|${rawHash}|${headings.length}`;
+    if (lastAppliedKeyRef.current === key) return;
+
+    const targetHeading = headings.find(header => header.textContent === hash);
+    if (!targetHeading) return;
+
+    lastAppliedKeyRef.current = key;
+    setActiveHeading(targetHeading);
+    setTimeout(() => {
+      isManualScroll.current = true;
+      const element = document.getElementById(targetHeading.id);
+      if (element) {
+        const container = document.getElementById(domId) || window;
+        const elementPosition = element.getBoundingClientRect().top;
+        const scrollTop =
+          'scrollY' in container ? container.scrollY : container.scrollTop;
+        const offsetPosition = elementPosition + scrollTop - defaultOffset;
+        container.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth',
+        });
+      }
+      setTimeout(() => {
+        isManualScroll.current = false;
+      }, 1000);
+    }, 100);
   }, [headings, defaultOffset, domId]);
+
+  // headings 重建时（首次加载 / SPA 文档切换）尝试应用 hash
+  useEffect(() => {
+    applyHashScroll();
+  }, [applyHashScroll]);
+
+  // 监听 hash 手动变化（点击 DocAnchor / 同页改 hash 等）
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onHashChange = () => {
+      // hash 变化时认为是新的滚动意图，清掉 key 让 applyHashScroll 可再次触发
+      lastAppliedKeyRef.current = '';
+      applyHashScroll();
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => {
+      window.removeEventListener('hashchange', onHashChange);
+    };
+  }, [applyHashScroll]);
 
   useEffect(() => {
     if (headings.length === 0) return;

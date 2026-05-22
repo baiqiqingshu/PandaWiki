@@ -901,13 +901,19 @@ const Wrap = ({ detail: defaultDetail }: WrapProps) => {
       <DocReferenceModal
         open={docReferenceOpen}
         onClose={() => setDocReferenceOpen(false)}
-        onInsert={(nodeId, title) => {
+        onInsert={(nodeId, title, headingText) => {
           if (editorRef.editor) {
+            const hash = headingText
+              ? `#${encodeURIComponent(headingText)}`
+              : '';
+            const headingAttr = headingText
+              ? ` data-doc-heading="${headingText.replace(/"/g, '&quot;')}"`
+              : '';
             editorRef.editor
               .chain()
               .focus()
               .insertContent(
-                `<a href="/node/${nodeId}" data-doc-ref="true" target="_self" title="${title}">${title}</a>`,
+                `<a href="/node/${nodeId}${hash}" data-doc-ref="true"${headingAttr} target="_self" title="${title}">${title}</a>`,
               )
               .run();
           }
