@@ -144,21 +144,25 @@ func createApp() (*App, error) {
 	navHandler := v1.NewNavHandler(baseHandler, echo, navUsecase, authMiddleware, logger)
 	exportUsecase := usecase.NewExportUsecase(nodeRepository, navRepository, knowledgeBaseRepository, userRepository, minioClient, logger)
 	exportHandler := v1.NewExportHandler(baseHandler, echo, exportUsecase, authMiddleware, logger)
+	nodeReleaseProHandler := v1.NewNodeReleaseProHandler(baseHandler, echo, nodeRepository, authMiddleware, logger)
+	authGroupProHandler := v1.NewAuthGroupProHandler(baseHandler, echo, authRepo, authMiddleware, logger)
 	apiHandlers := &v1.APIHandlers{
-		UserHandler:          userHandler,
-		KnowledgeBaseHandler: knowledgeBaseHandler,
-		NodeHandler:          nodeHandler,
-		AppHandler:           appHandler,
-		FileHandler:          fileHandler,
-		ModelHandler:         modelHandler,
-		ConversationHandler:  conversationHandler,
-		CrawlerHandler:       crawlerHandler,
-		CreationHandler:      creationHandler,
-		StatHandler:          statHandler,
-		CommentHandler:       commentHandler,
-		AuthV1Handler:        authV1Handler,
-		NavHandler:           navHandler,
-		ExportHandler:        exportHandler,
+		UserHandler:           userHandler,
+		KnowledgeBaseHandler:  knowledgeBaseHandler,
+		NodeHandler:           nodeHandler,
+		AppHandler:            appHandler,
+		FileHandler:           fileHandler,
+		ModelHandler:          modelHandler,
+		ConversationHandler:   conversationHandler,
+		CrawlerHandler:        crawlerHandler,
+		CreationHandler:       creationHandler,
+		StatHandler:           statHandler,
+		CommentHandler:        commentHandler,
+		AuthV1Handler:         authV1Handler,
+		NavHandler:            navHandler,
+		ExportHandler:         exportHandler,
+		NodeReleaseProHandler: nodeReleaseProHandler,
+		AuthGroupProHandler:   authGroupProHandler,
 	}
 	shareNodeHandler := share.NewShareNodeHandler(baseHandler, echo, nodeUsecase, logger)
 	shareNavHandler := share.NewShareNavHandler(baseHandler, echo, navUsecase, logger)

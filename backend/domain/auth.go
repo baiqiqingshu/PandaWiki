@@ -117,3 +117,26 @@ func GetAuthID(c echo.Context) uint {
 	}
 	return userId
 }
+
+// pro 接口的请求/响应结构，匹配 /api/pro/v1/auth/group/list 的前端 swagger 类型
+
+type GetProAuthGroupListReq struct {
+	KBID string `json:"kb_id" query:"kb_id" validate:"required"`
+	Pager
+}
+
+type ProAuthGroupListItem struct {
+	ID        uint      `json:"id"`
+	Name      string    `json:"name"`
+	ParentID  uint      `json:"parent_id"`
+	Position  float64   `json:"position"`
+	AuthIDs   []int64   `json:"auth_ids"`
+	Count     int       `json:"count"`
+	Path      string    `json:"path"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ProAuthGroupListResp struct {
+	List  []ProAuthGroupListItem `json:"list"`
+	Total int64                  `json:"total"`
+}

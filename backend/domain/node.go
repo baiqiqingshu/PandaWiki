@@ -374,3 +374,45 @@ type NodeReleaseWithPublisher struct {
 	PublisherId      string `json:"publisher_id"`
 	PublisherAccount string `json:"publisher_account"`
 }
+
+// pro 接口的请求/响应结构，匹配 /api/pro/v1/node/release/* 的前端 swagger 类型
+
+type GetProNodeReleaseListReq struct {
+	KBID   string `json:"kb_id" query:"kb_id" validate:"required"`
+	NodeID string `json:"node_id" query:"node_id" validate:"required"`
+}
+
+type GetProNodeReleaseDetailReq struct {
+	ID   string `json:"id" query:"id" validate:"required"`
+	KBID string `json:"kb_id" query:"kb_id" validate:"required"`
+}
+
+type ProNodeReleaseListItem struct {
+	ID               string    `json:"id"`
+	NodeID           string    `json:"node_id"`
+	Name             string    `json:"name"`
+	Meta             NodeMeta  `json:"meta"`
+	CreatorID        string    `json:"creator_id"`
+	CreatorAccount   string    `json:"creator_account"`
+	EditorID         string    `json:"editor_id"`
+	EditorAccount    string    `json:"editor_account"`
+	PublisherID      string    `json:"publisher_id"`
+	PublisherAccount string    `json:"publisher_account"`
+	ReleaseID        string    `json:"release_id"`
+	ReleaseName      string    `json:"release_name"`
+	ReleaseMessage   string    `json:"release_message"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+type ProNodeReleaseDetailResp struct {
+	NodeID           string   `json:"node_id"`
+	Name             string   `json:"name"`
+	Meta             NodeMeta `json:"meta"`
+	Content          string   `json:"content"`
+	CreatorID        string   `json:"creator_id"`
+	CreatorAccount   string   `json:"creator_account"`
+	EditorID         string   `json:"editor_id"`
+	EditorAccount    string   `json:"editor_account"`
+	PublisherID      string   `json:"publisher_id"`
+	PublisherAccount string   `json:"publisher_account"`
+}

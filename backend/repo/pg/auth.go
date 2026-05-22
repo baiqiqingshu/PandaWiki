@@ -337,3 +337,31 @@ func (r *AuthRepo) GetOrCreateAuth(ctx context.Context, auth *domain.Auth, sourc
 
 	return auth, nil
 }
+
+// ListAuthGroupsByKB 分页返回某知识库下的权限组
+func (r *AuthRepo) ListAuthGroupsByKB(ctx context.Context, kbID string, page, perPage int) ([]domain.AuthGroup, int64, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if perPage <= 0 {
+		perPage = 20
+	}
+
+	var total int64
+	if err := r.db.WithContext(ctx).Model(&domain.AuthGroup{}).
+		Where("kb_id = ?", kbID).
+		Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var groups []domain.AuthGroup
+	if err := r.db.WithContext(ctx).Model(&domain.AuthGroup{}).
+		Where("kb_id = ?", kbID).
+		Order("position ASC, id ASC").
+		Limit(perPage).
+		Offset((page - 1) * perPage).
+		Find(&groups).Error; err != nil {
+		return nil, 0, err
+	}
+	return groups, total, nil
+}

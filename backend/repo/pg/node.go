@@ -1433,3 +1433,164 @@ func (r *NodeRepository) GetNodesByNavID(ctx context.Context, kbID, navID string
 	}
 	return nodes, nil
 }
+
+// ListProNodeReleases 返回某文档的所有历史发布版本，按更新时间倒序，关联用户名与 kb_release 信息
+func (r *NodeRepository) ListProNodeReleases(ctx context.Context, kbID, nodeID string) ([]*domain.ProNodeReleaseListItem, error) {
+	var releases []*domain.NodeRelease
+	if err := r.db.WithContext(ctx).
+		Model(&domain.NodeRelease{}).
+		Where("kb_id = ? AND node_id = ?", kbID, nodeID).
+		Order("updated_at DESC").
+		Find(&releases).Error; err != nil {
+		return nil, err
+	}
+	if len(releases) == 0 {
+		return []*domain.ProNodeReleaseListItem{}, nil
+	}
+
+	// 取该文档当前的 creator_id
+	var node domain.Node
+	_ = r.db.WithContext(ctx).Model(&domain.Node{}).
+		Select("id, creator_id").
+		Where("id = ?", nodeID).
+		Take(&node).Error
+
+	// 一次性获取所有相关用户的 account
+	userIDSet := map[string]struct{}{}
+	if node.CreatorId != "" {
+		userIDSet[node.CreatorId] = struct{}{}
+	}
+	releaseIDs := make([]string, 0, len(releases))
+	for _, rel := range releases {
+		if rel.PublisherId != "" {
+			userIDSet[rel.PublisherId] = struct{}{}
+		}
+		if rel.EditorId != "" {
+			userIDSet[rel.EditorId] = struct{}{}
+		}
+		releaseIDs = append(releaseIDs, rel.ID)
+	}
+	userIDs := make([]string, 0, len(userIDSet))
+	for id := range userIDSet {
+		userIDs = append(userIDs, id)
+	}
+	accountMap := map[string]string{}
+	if len(userIDs) > 0 {
+		var users []struct {
+			ID      string `gorm:"column:id"`
+			Account string `gorm:"column:account"`
+		}
+		if err := r.db.WithContext(ctx).Table("users").
+			Select("id, account").
+			Where("id IN ?", userIDs).
+			Scan(&users).Error; err == nil {
+			for _, u := range users {
+				accountMap[u.ID] = u.Account
+			}
+		}
+	}
+
+	// 每条 node_release 关联到的最近一次 kb_release（取 created_at 最大），用于补全 release_name/release_message
+	type kbRelMatch struct {
+		NodeReleaseID string `gorm:"column:node_release_id"`
+		ReleaseID     string `gorm:"column:release_id"`
+		Tag           string `gorm:"column:tag"`
+		Message       string `gorm:"column:message"`
+	}
+	relMap := map[string]kbRelMatch{}
+	if len(releaseIDs) > 0 {
+		var rows []kbRelMatch
+		// 用一个子查询取每个 node_release 最近一次出现的 kb_release
+		err := r.db.WithContext(ctx).Raw(`
+			SELECT DISTINCT ON (m.node_release_id)
+				m.node_release_id, m.release_id, k.tag, k.message
+			FROM kb_release_node_releases m
+			LEFT JOIN kb_releases k ON k.id = m.release_id
+			WHERE m.node_release_id IN ? AND m.kb_id = ?
+			ORDER BY m.node_release_id, k.created_at DESC NULLS LAST
+		`, releaseIDs, kbID).Scan(&rows).Error
+		if err == nil {
+			for _, row := range rows {
+				relMap[row.NodeReleaseID] = row
+			}
+		}
+	}
+
+	items := make([]*domain.ProNodeReleaseListItem, 0, len(releases))
+	for _, rel := range releases {
+		match := relMap[rel.ID]
+		items = append(items, &domain.ProNodeReleaseListItem{
+			ID:               rel.ID,
+			NodeID:           rel.NodeID,
+			Name:             rel.Name,
+			Meta:             rel.Meta,
+			CreatorID:        node.CreatorId,
+			CreatorAccount:   accountMap[node.CreatorId],
+			EditorID:         rel.EditorId,
+			EditorAccount:    accountMap[rel.EditorId],
+			PublisherID:      rel.PublisherId,
+			PublisherAccount: accountMap[rel.PublisherId],
+			ReleaseID:        match.ReleaseID,
+			ReleaseName:      match.Tag,
+			ReleaseMessage:   match.Message,
+			UpdatedAt:        rel.UpdatedAt,
+		})
+	}
+	return items, nil
+}
+
+// GetProNodeReleaseDetail 返回单条 node_release 的完整详情
+func (r *NodeRepository) GetProNodeReleaseDetail(ctx context.Context, kbID, id string) (*domain.ProNodeReleaseDetailResp, error) {
+	var rel domain.NodeRelease
+	if err := r.db.WithContext(ctx).
+		Model(&domain.NodeRelease{}).
+		Where("id = ? AND kb_id = ?", id, kbID).
+		First(&rel).Error; err != nil {
+		return nil, err
+	}
+
+	var creatorID string
+	_ = r.db.WithContext(ctx).Table("nodes").
+		Select("creator_id").
+		Where("id = ?", rel.NodeID).
+		Take(&creatorID).Error
+
+	userIDSet := map[string]struct{}{}
+	for _, id := range []string{creatorID, rel.PublisherId, rel.EditorId} {
+		if id != "" {
+			userIDSet[id] = struct{}{}
+		}
+	}
+	userIDs := make([]string, 0, len(userIDSet))
+	for id := range userIDSet {
+		userIDs = append(userIDs, id)
+	}
+	accountMap := map[string]string{}
+	if len(userIDs) > 0 {
+		var users []struct {
+			ID      string `gorm:"column:id"`
+			Account string `gorm:"column:account"`
+		}
+		if err := r.db.WithContext(ctx).Table("users").
+			Select("id, account").
+			Where("id IN ?", userIDs).
+			Scan(&users).Error; err == nil {
+			for _, u := range users {
+				accountMap[u.ID] = u.Account
+			}
+		}
+	}
+
+	return &domain.ProNodeReleaseDetailResp{
+		NodeID:           rel.NodeID,
+		Name:             rel.Name,
+		Meta:             rel.Meta,
+		Content:          rel.Content,
+		CreatorID:        creatorID,
+		CreatorAccount:   accountMap[creatorID],
+		EditorID:         rel.EditorId,
+		EditorAccount:    accountMap[rel.EditorId],
+		PublisherID:      rel.PublisherId,
+		PublisherAccount: accountMap[rel.PublisherId],
+	}, nil
+}
