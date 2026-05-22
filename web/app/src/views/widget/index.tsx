@@ -59,6 +59,8 @@ const StyledTab = styled(Tab)(({ theme }) => ({
   },
 }));
 
+const SEARCH_TAB_CACHE_KEY = 'panda_wiki_search_tab';
+
 const Widget = () => {
   const { widget, mobile } = useStore();
 
@@ -71,7 +73,12 @@ const Widget = () => {
   >(() => {
     if (defaultSearchMode === 'qa') return 'qa';
     if (defaultSearchMode === 'doc') return 'doc';
-    // search_mode === 'all': 使用可配置的默认标签页，默认为 'doc'
+    // search_mode === 'all': 优先从浏览器缓存恢复用户上次的选择
+    try {
+      const cached = localStorage.getItem(SEARCH_TAB_CACHE_KEY);
+      if (cached === 'qa' || cached === 'doc') return cached;
+    } catch {}
+    // 无缓存时使用后台配置的默认标签页
     const defaultTab =
       widget?.settings?.widget_bot_settings?.default_search_tab || 'doc';
     return defaultTab as 'qa' | 'doc';
@@ -130,6 +137,9 @@ const Widget = () => {
             value={searchMode}
             onChange={(_, value) => {
               setSearchMode(value as 'qa' | 'doc');
+              try {
+                localStorage.setItem(SEARCH_TAB_CACHE_KEY, value as string);
+              } catch {}
             }}
             variant='scrollable'
             scrollButtons={false}

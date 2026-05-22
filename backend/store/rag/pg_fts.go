@@ -3,6 +3,8 @@ package rag
 import (
 	"context"
 	"fmt"
+	stdhtml "html"
+	"regexp"
 	"strings"
 
 	"github.com/google/uuid"
@@ -20,6 +22,15 @@ type PgFTSRAG struct {
 	db     *pg.DB
 	logger *log.Logger
 }
+
+var (
+	markdownImagePattern = regexp.MustCompile(`!\[[^\]]*\]\([^)]*\)`)
+	htmlImagePattern     = regexp.MustCompile(`(?is)<img\b[^>]*>`)
+	htmlTagPattern       = regexp.MustCompile(`(?s)<[^>]+>`)
+	dataImagePattern     = regexp.MustCompile(`(?is)data:image/[^ \t\r\n'")>]+`)
+	urlPattern           = regexp.MustCompile(`(?is)https?://[^ \t\r\n'")<]+`)
+	whitespacePattern    = regexp.MustCompile(`\s+`)
+)
 
 func NewPgFTSRAG(db *pg.DB, logger *log.Logger) *PgFTSRAG {
 	return &PgFTSRAG{
@@ -78,34 +89,29 @@ func (s *PgFTSRAG) QueryRecords(ctx context.Context, req *QueryRecordsRequest) (
 			COALESCE(NULLIF(nr.doc_id, ''), nr.id) AS doc_id,
 			nr.node_id,
 			nr.name,
-			LEFT(nr.content, 2000) as content,
-			CASE 
-				WHEN nr.search_vector @@ plainto_tsquery('simple', ?) THEN
-					ts_headline('simple', nr.content, plainto_tsquery('simple', ?), 
-						'MaxWords=60, MinWords=20, MaxFragments=1, StartSel=, StopSel=')
-				ELSE
-					''
-			END as match_snippet,
+			LEFT(sc.search_content, 2000) as content,
+			'' as match_snippet,
 			(
 				ts_rank_cd(COALESCE(nr.search_vector, ''::tsvector), plainto_tsquery('simple', ?)) * 100 +
 				CASE WHEN nr.name ILIKE ? THEN 10 ELSE 0 END +
 				CASE WHEN nr.meta->>'summary' ILIKE ? THEN 5 ELSE 0 END +
-				CASE WHEN nr.content ILIKE ? THEN 1 ELSE 0 END
+				CASE WHEN sc.search_content ILIKE ? THEN 1 ELSE 0 END
 			) AS score
 		FROM node_releases nr
+		CROSS JOIN LATERAL (
+			SELECT node_releases_search_text(nr.content) AS search_content
+		) sc
 		WHERE 
 			nr.type = ?
 			AND (
-				nr.search_vector @@ plainto_tsquery('simple', ?)
+				COALESCE(nr.search_vector, ''::tsvector) @@ plainto_tsquery('simple', ?)
 				OR nr.name ILIKE ?
-				OR nr.content ILIKE ?
+				OR sc.search_content ILIKE ?
 			)
 	`
 
 	likePattern := "%" + query + "%"
 	args := []interface{}{
-		query,       // ts_headline query
-		query,       // ts_headline plainto_tsquery
 		query,       // ts_rank_cd
 		likePattern, // name ILIKE score
 		likePattern, // summary ILIKE score
@@ -174,20 +180,35 @@ func (s *PgFTSRAG) QueryRecords(ctx context.Context, req *QueryRecordsRequest) (
 		if r.Score < threshold {
 			continue
 		}
-		snippet := r.MatchSnippet
+		content := normalizeSearchText(r.Content)
+		snippet := normalizeSearchText(r.MatchSnippet)
 		// 如果 ts_headline 没有返回结果（ILIKE 命中的情况），手动从 content 中提取匹配段落
 		if snippet == "" && r.Content != "" {
-			snippet = s.extractSnippet(r.Content, query, 150)
+			snippet = s.extractSnippet(content, query, 150)
 		}
 		nodeChunks = append(nodeChunks, &domain.NodeContentChunk{
 			ID:           r.DocID,
-			Content:      r.Content,
+			Content:      content,
 			DocID:        r.DocID,
 			MatchSnippet: snippet,
 		})
 	}
 
 	return query, nodeChunks, nil
+}
+
+func normalizeSearchText(content string) string {
+	if content == "" {
+		return ""
+	}
+	cleaned := stdhtml.UnescapeString(content)
+	cleaned = htmlImagePattern.ReplaceAllString(cleaned, " ")
+	cleaned = markdownImagePattern.ReplaceAllString(cleaned, " ")
+	cleaned = dataImagePattern.ReplaceAllString(cleaned, " ")
+	cleaned = urlPattern.ReplaceAllString(cleaned, " ")
+	cleaned = htmlTagPattern.ReplaceAllString(cleaned, " ")
+	cleaned = whitespacePattern.ReplaceAllString(cleaned, " ")
+	return strings.TrimSpace(cleaned)
 }
 
 // extractSnippet 从 content 中提取包含 query 的段落片段

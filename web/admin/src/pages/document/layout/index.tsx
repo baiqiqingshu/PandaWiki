@@ -212,13 +212,14 @@ const Content = () => {
       setWikiUrl(window.location.origin);
       return;
     }
-    const { ssl_ports = [], ports = [] } = currentKb?.access_settings || {};
+    const sslPorts = currentKb?.access_settings?.ssl_ports ?? [];
+    const ports = currentKb?.access_settings?.ports ?? [];
 
-    if (ssl_ports) {
-      if (ssl_ports.includes(443)) setWikiUrl(`https://${host}`);
-      else if (ssl_ports.length > 0)
-        setWikiUrl(`https://${host}:${ssl_ports[0]}`);
-    } else if (ports) {
+    if (sslPorts.length > 0) {
+      if (sslPorts.includes(443)) setWikiUrl(`https://${host}`);
+      else if (sslPorts.length > 0)
+        setWikiUrl(`https://${host}:${sslPorts[0]}`);
+    } else if (ports.length > 0) {
       if (ports.includes(80)) setWikiUrl(`http://${host}`);
       else if (ports.length > 0) setWikiUrl(`http://${host}:${ports[0]}`);
     } else {

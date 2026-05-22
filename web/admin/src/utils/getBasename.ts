@@ -290,7 +290,8 @@ export function wrapWindowOpen(basename: string): void {
     // 如果 url 是字符串，处理 basename
     if (typeof url === 'string' && url) {
       // 在编辑器页面中，拦截 /node/{uuid} 的跳转，转为 SPA 导航到 /doc/editor/{uuid}
-      if (isInEditorPage()) {
+      const shouldOpenInCurrentTab = !target || target === '_self';
+      if (shouldOpenInCurrentTab && isInEditorPage()) {
         // 处理绝对 URL 和相对路径
         const nodeId = extractNodeIdFromUrl(url, basename);
         if (nodeId) {
