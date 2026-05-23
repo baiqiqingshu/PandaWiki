@@ -72,8 +72,11 @@ COPY --from=go-builder /src/store/pg/migration /app/migration
 COPY --from=web-builder /web/admin/dist /app/admin-dist
 
 # --- 复制 App (Next.js standalone) ---
-COPY --from=web-builder /web/app/public /app/next-app/public
+# standalone 输出展开到 /app/next-app/，真正的 server.js 在 /app/next-app/app/server.js，
+# 所以运行时 cwd = /app/next-app/app/。Next.js 只在 cwd 下查找 public/，
+# public 必须放在 /app/next-app/app/public 才能被 serve（否则 /images/init/* 全部 404）。
 COPY --from=web-builder /web/app/dist/standalone/ /app/next-app/
+COPY --from=web-builder /web/app/public /app/next-app/app/public
 COPY --from=web-builder /web/app/dist/static /app/next-app/app/dist/static
 
 # --- Nginx 配置 ---
