@@ -58,7 +58,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-panda-wiki-secret}
       POSTGRES_DB: panda-wiki
     volumes:
-      - pg-data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U panda-wiki"]
       interval: 5s
@@ -79,7 +79,7 @@ services:
         redis-server;
       fi"
     volumes:
-      - redis-data:/data
+      - ./data/redis:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -95,7 +95,7 @@ services:
     restart: unless-stopped
     command: ["--jetstream", "--store_dir=/data"]
     volumes:
-      - nats-data:/data
+      - ./data/nats:/data
     networks:
       - panda-wiki-net
 
@@ -109,7 +109,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-s3panda-wiki}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-panda-wiki-secret}
     volumes:
-      - minio-data:/data
+      - ./data/minio:/data
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 5s
@@ -118,11 +118,7 @@ services:
     networks:
       - panda-wiki-net
 
-volumes:
-  pg-data:
-  redis-data:
-  nats-data:
-  minio-data:
+
 
 networks:
   panda-wiki-net:
