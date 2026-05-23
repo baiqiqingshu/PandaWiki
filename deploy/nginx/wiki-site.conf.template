@@ -1,14 +1,47 @@
 # ============================================================
 # Wiki 前台站点 (由 entrypoint.sh 从此模板生成)
 # 监听 WIKI_SITE_PORT，代理到 Next.js App + Go API (share 接口)
+#
+# 动态解析知识库 ID：
+#   每次请求前通过 auth_request 调用 /share/v1/resolve，
+#   由后端根据 Host:Port 返回当前请求归属的 X-KB-ID，
+#   再注入到下游的 share API 与 Next.js SSR。
+#   这样新建/切换知识库后无需重启容器即可生效。
 # ============================================================
 
 server {
     listen ${WIKI_SITE_PORT};
     charset utf-8;
 
+    # ---- 内部接口: 解析当前请求归属的 KB ID ----
+    # 仅 nginx 内部可访问；auth_request 会向此路径发起子请求
+    location = /__resolve_kb {
+        internal;
+        proxy_pass http://backend/share/v1/resolve;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-Host $http_host;
+        proxy_set_header X-Forwarded-Port ${WIKI_SITE_PORT};
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 3s;
+    }
+
+    # ---- KB 尚未就绪时的友好错误页 ----
+    # 解析接口在没有任何 KB 时会返回 403；nginx auth_request 会把该状态原样向下传，
+    # 单独捕获 403 即可，不会影响后端真实 500 的诊断信息。
+    error_page 403 = @kb_unavailable;
+    location @kb_unavailable {
+        default_type text/html;
+        return 503 '<!doctype html><meta charset="utf-8"><title>Wiki 未就绪</title><style>body{font-family:sans-serif;text-align:center;padding:80px}</style><h1>站点初始化中</h1><p>尚未创建知识库，请先在管理后台 (端口 8900) 完成初始化。</p>';
+    }
+
     # ---- SSE / 流式聊天接口 ----
     location ~ ^/share/v1/chat/message$ {
+        auth_request /__resolve_kb;
+        auth_request_set $resolved_kb_id $upstream_http_x_kb_id;
+
         proxy_set_header Connection '';
         proxy_http_version 1.1;
         chunked_transfer_encoding off;
@@ -22,42 +55,65 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Host $http_host;
-        proxy_set_header X-KB-ID "${WIKI_KB_ID}";
+        proxy_set_header X-KB-ID $resolved_kb_id;
 
         proxy_pass http://backend;
     }
 
-    # ---- Share API 接口 (带 X-KB-ID) ----
+    # ---- 内部解析接口本身不需要 auth_request；放在前面以免被下面的 ^/share 捕获 ----
+    # （路径 /__resolve_kb 已通过 = 精确匹配并标记 internal，外部无法直接访问）
+
+    # ---- Share API 接口 (带动态 X-KB-ID) ----
+    location ~ ^/share/v1/resolve$ {
+        # 这个路径就是用来解析 KB 的，不能再触发 auth_request 形成循环
+        proxy_pass http://backend;
+
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Port ${WIKI_SITE_PORT};
+        proxy_set_header Host $http_host;
+    }
+
     location ~ ^/share {
+        auth_request /__resolve_kb;
+        auth_request_set $resolved_kb_id $upstream_http_x_kb_id;
+
         proxy_pass http://backend;
 
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Host $http_host;
-        proxy_set_header X-KB-ID "${WIKI_KB_ID}";
+        proxy_set_header X-KB-ID $resolved_kb_id;
     }
 
     # ---- Sitemap ----
     location = /sitemap.xml {
+        auth_request /__resolve_kb;
+        auth_request_set $resolved_kb_id $upstream_http_x_kb_id;
+
         proxy_pass http://backend;
 
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Host $http_host;
-        proxy_set_header X-KB-ID "${WIKI_KB_ID}";
+        proxy_set_header X-KB-ID $resolved_kb_id;
     }
 
     # ---- MCP 端点 ----
     location = /mcp {
+        auth_request /__resolve_kb;
+        auth_request_set $resolved_kb_id $upstream_http_x_kb_id;
+
         proxy_pass http://backend;
 
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Host $http_host;
-        proxy_set_header X-KB-ID "${WIKI_KB_ID}";
+        proxy_set_header X-KB-ID $resolved_kb_id;
     }
 
     # ---- MinIO 静态文件代理 ----
@@ -89,7 +145,7 @@ server {
         proxy_buffering off;
     }
 
-    # ---- Next.js 静态资源 ----
+    # ---- Next.js 静态资源 (无需 X-KB-ID) ----
     location /panda-wiki-app-assets/ {
         proxy_pass http://nextjs;
 
@@ -117,14 +173,17 @@ server {
         proxy_set_header Host $http_host;
     }
 
-    # ---- 默认: 所有其他请求代理到 Next.js App (带 X-KB-ID) ----
+    # ---- 默认: 所有其他请求代理到 Next.js App (带动态 X-KB-ID) ----
     location / {
+        auth_request /__resolve_kb;
+        auth_request_set $resolved_kb_id $upstream_http_x_kb_id;
+
         proxy_pass http://nextjs;
 
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Host $http_host;
-        proxy_set_header X-KB-ID "${WIKI_KB_ID}";
+        proxy_set_header X-KB-ID $resolved_kb_id;
     }
 }

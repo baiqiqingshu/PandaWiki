@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -132,6 +133,91 @@ func (u *KnowledgeBaseUsecase) GetKnowledgeBase(ctx context.Context, kbID string
 		return nil, err
 	}
 	return kb, nil
+}
+
+// ResolveKBIDByHostPort 根据请求的 host 与端口解析出对应的知识库 ID。
+// 单镜像部署模式下，Nginx 通过 auth_request 在每次请求前调用本接口，
+// 使得新建/切换知识库后无需重启容器即可生效。
+//
+// 匹配优先级：
+//  1. host 完全匹配 + port 完全匹配
+//  2. host 通配（0.0.0.0/*/空）+ port 完全匹配
+//  3. port 完全匹配（忽略 host）
+//  4. 按 created_at 升序的第一个知识库（默认站点）
+//
+// 找不到任何知识库时返回 (nil, nil)，由调用方决定如何回应。
+func (u *KnowledgeBaseUsecase) ResolveKBIDByHostPort(ctx context.Context, host string, port int) (string, error) {
+	kbList, err := u.repo.GetKnowledgeBaseList(ctx)
+	if err != nil {
+		return "", err
+	}
+	if len(kbList) == 0 {
+		return "", nil
+	}
+
+	isWildcardHost := func(h string) bool {
+		h = strings.TrimSpace(h)
+		return h == "" || h == "*" || h == "0.0.0.0" || h == "::"
+	}
+	portMatches := func(kb *domain.KnowledgeBaseListItem) bool {
+		for _, p := range kb.AccessSettings.Ports {
+			if p == port {
+				return true
+			}
+		}
+		for _, p := range kb.AccessSettings.SSLPorts {
+			if p == port {
+				return true
+			}
+		}
+		return false
+	}
+
+	host = strings.ToLower(strings.TrimSpace(host))
+
+	var exactMatch, wildcardMatch, portOnlyMatch *domain.KnowledgeBaseListItem
+	for _, kb := range kbList {
+		if !portMatches(kb) {
+			continue
+		}
+		if portOnlyMatch == nil {
+			portOnlyMatch = kb
+		}
+		hosts := kb.AccessSettings.Hosts
+		if len(hosts) == 0 {
+			if wildcardMatch == nil {
+				wildcardMatch = kb
+			}
+			continue
+		}
+		for _, h := range hosts {
+			if isWildcardHost(h) {
+				if wildcardMatch == nil {
+					wildcardMatch = kb
+				}
+				continue
+			}
+			if strings.EqualFold(strings.TrimSpace(h), host) {
+				exactMatch = kb
+				break
+			}
+		}
+		if exactMatch != nil {
+			break
+		}
+	}
+
+	switch {
+	case exactMatch != nil:
+		return exactMatch.ID, nil
+	case wildcardMatch != nil:
+		return wildcardMatch.ID, nil
+	case portOnlyMatch != nil:
+		return portOnlyMatch.ID, nil
+	default:
+		// 没有任何 KB 显式声明该端口；单镜像模式下回退到第一个 KB（默认站点）
+		return kbList[0].ID, nil
+	}
 }
 
 func (u *KnowledgeBaseUsecase) GetKnowledgeBasePerm(ctx context.Context, kbID string) (consts.UserKBPermission, error) {

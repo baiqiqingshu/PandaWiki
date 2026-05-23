@@ -182,6 +182,7 @@ func createApp() (*App, error) {
 	shareCaptchaHandler := share.NewShareCaptchaHandler(baseHandler, echo, logger)
 	openapiV1Handler := share.NewOpenapiV1Handler(echo, baseHandler, logger, authUsecase, appUsecase)
 	shareCommonHandler := share.NewShareCommonHandler(echo, baseHandler, logger, fileUsecase)
+	shareResolveHandler := share.NewShareResolveHandler(echo, baseHandler, logger, knowledgeBaseUsecase)
 	shareHandler := &share.ShareHandler{
 		ShareNodeHandler:         shareNodeHandler,
 		ShareNavHandler:          shareNavHandler,
@@ -196,6 +197,7 @@ func createApp() (*App, error) {
 		ShareCaptchaHandler:      shareCaptchaHandler,
 		OpenapiV1Handler:         openapiV1Handler,
 		ShareCommonHandler:       shareCommonHandler,
+		ShareResolveHandler:      shareResolveHandler,
 	}
 	app := &App{
 		HTTPServer:    httpServer,
