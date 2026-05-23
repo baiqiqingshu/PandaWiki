@@ -732,7 +732,7 @@ func (u *AppUsecase) ShareGetWebAppInfo(ctx context.Context, kbID string, authId
 	if app.Settings.HomePageSetting == "" {
 		appInfo.Settings.HomePageSetting = consts.HomePageSettingDoc
 	}
-	showBrand := true
+	showBrand := false
 	defaultDisclaimer := "本回答由 PandaWiki 基于 AI 生成，仅供参考。"
 
 	if !domain.GetBaseEditionLimitation(ctx).AllowCustomCopyright {

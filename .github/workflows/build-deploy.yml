@@ -64,20 +64,21 @@ jobs:
             echo "=== 清理旧部署 ==="
             if [ -d /opt/PandaWiki ]; then
               cd /opt/PandaWiki
-              docker compose down -v --remove-orphans 2>/dev/null || true
+              docker compose down --remove-orphans 2>/dev/null || true
+              rm -rf /opt/PandaWiki/data
               cd /
               rm -rf /opt/PandaWiki
             fi
             mkdir -p /opt/PandaWiki
             echo "=== 清理完成 ==="
 
-      - name: 上传 docker-compose.yml
+      - name: 上传部署文件
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASSWORD }}
-          source: "docker-compose.yml"
+          source: "docker-compose.yml,cleanup.sh"
           target: "/opt/PandaWiki/"
           overwrite: true
 
@@ -108,10 +109,11 @@ jobs:
               echo "GH_PAT not set, skipping GHCR login (public images only)"
             fi
 
+            # 赋予清理脚本执行权限
+            chmod +x cleanup.sh
+
             # 拉取镜像并启动
             docker compose pull
             docker compose up -d
             echo "=== 部署完成 ==="
             docker compose ps
-
-
