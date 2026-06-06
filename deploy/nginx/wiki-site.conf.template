@@ -1,16 +1,21 @@
 # ============================================================
 # Wiki 前台站点 (由 entrypoint.sh 从此模板生成)
-# 监听 WIKI_SITE_PORT，代理到 Next.js App + Go API (share 接口)
+# 监听 WIKI_SITE_PORTS 中的所有端口，代理到 Next.js App + Go API (share 接口)
 #
 # 动态解析知识库 ID：
 #   每次请求前通过 auth_request 调用 /share/v1/resolve，
 #   由后端根据 Host:Port 返回当前请求归属的 X-KB-ID，
 #   再注入到下游的 share API 与 Next.js SSR。
 #   这样新建/切换知识库后无需重启容器即可生效。
+#
+# 多端口支持：
+#   entrypoint.sh 会将 WIKI_SITE_PORTS 中的每个端口生成一行 listen 指令，
+#   替换下面的 ##LISTEN_DIRECTIVES## 占位符。
+#   所有端口共用同一 server 块，通过 $server_port 传递实际端口给后端解析。
 # ============================================================
 
 server {
-    listen ${WIKI_SITE_PORT};
+    ##LISTEN_DIRECTIVES##
     charset utf-8;
 
     # ---- 内部接口: 解析当前请求归属的 KB ID ----
@@ -22,7 +27,7 @@ server {
         proxy_set_header Content-Length "";
         proxy_set_header Host $http_host;
         proxy_set_header X-Forwarded-Host $http_host;
-        proxy_set_header X-Forwarded-Port ${WIKI_SITE_PORT};
+        proxy_set_header X-Forwarded-Port $server_port;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_connect_timeout 2s;
         proxy_read_timeout 3s;
@@ -71,7 +76,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Port ${WIKI_SITE_PORT};
+        proxy_set_header X-Forwarded-Port $server_port;
         proxy_set_header Host $http_host;
     }
 

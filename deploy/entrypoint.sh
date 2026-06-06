@@ -20,16 +20,32 @@ echo "运行数据库迁移..."
 /app/panda-wiki-migrate
 echo "数据库迁移完成"
 
-# ---- 生成 Wiki 前台站点 Nginx 配置 ----
-# 知识库 ID 不再写死到配置里；nginx 会通过 auth_request 在每次请求前
-# 调用 /share/v1/resolve 由后端按 Host:Port 动态解析，
-# 这样新建/切换知识库后无需重启容器即可生效。
+# ---- 生成 Wiki 前台站点 Nginx 配置 (支持多端口) ----
+# WIKI_SITE_PORTS: 逗号分隔的端口列表，例如 "8005,8006,8007"
+# WIKI_SITE_PORT:  向后兼容的单端口变量（默认 8005）
+# 优先使用 WIKI_SITE_PORTS，若未设置则回退到 WIKI_SITE_PORT
 WIKI_SITE_PORT="${WIKI_SITE_PORT:-8005}"
-echo "Wiki 前台站点端口: ${WIKI_SITE_PORT} (KB ID 由后端动态解析)"
+WIKI_SITE_PORTS="${WIKI_SITE_PORTS:-$WIKI_SITE_PORT}"
+
+echo "Wiki 前台站点端口: ${WIKI_SITE_PORTS} (KB ID 由后端动态解析)"
 
 if [ -f /app/wiki-site.conf.template ]; then
-    envsubst '${WIKI_SITE_PORT}' < /app/wiki-site.conf.template > /etc/nginx/conf.d/wiki-site.conf
-    echo "Wiki 站点 Nginx 配置已生成"
+    # 用 awk 把占位符整行替换为多行 listen 指令。
+    # 直接把逗号分隔的端口列表交给 awk 拆分，避免在 sh 中拼接字面 "\n"
+    # 与 awk 换行正则不匹配的问题。
+    awk -v ports="$WIKI_SITE_PORTS" '
+        /##LISTEN_DIRECTIVES##/ {
+            n = split(ports, arr, ",")
+            for (i = 1; i <= n; i++) {
+                gsub(/[ \t]/, "", arr[i])
+                if (arr[i] != "") printf "    listen %s;\n", arr[i]
+            }
+            next
+        }
+        { print }
+    ' /app/wiki-site.conf.template > /etc/nginx/conf.d/wiki-site.conf
+
+    echo "Wiki 站点 Nginx 配置已生成 (端口: ${WIKI_SITE_PORTS})"
 fi
 
 # 启动所有服务

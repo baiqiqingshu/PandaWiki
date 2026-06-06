@@ -99,8 +99,14 @@ cat > .env << 'EOF'
 # 管理后台访问端口
 ADMIN_PORT=8900
 
-# Wiki 前台站点端口
-WIKI_SITE_PORT=8005
+# Wiki 前台站点端口（多站点，逗号分隔；nginx 同时监听所有端口）
+# 每个端口对应一个独立站点，新增/删除站点无需重启容器
+WIKI_SITE_PORTS=8005,8006,8007
+
+# docker-compose 宿主机端口映射（必须与 WIKI_SITE_PORTS 一一对应）
+WIKI_PORT_1=8005
+WIKI_PORT_2=8006
+WIKI_PORT_3=8007
 
 # 管理员账号密码（账号固定为 admin）
 ADMIN_PASSWORD=admin123
@@ -127,7 +133,7 @@ LOG_LEVEL=0
 # 检索模式：fts=PostgreSQL 全文检索，noop=关闭检索，ct=CT RAG
 RAG_PROVIDER=fts
 
-# Wiki 站点自动初始化
+# Wiki 站点自动初始化（仅首次无知识库时创建示例站点，使用第一个端口）
 WIKI_NAME=PandaWiki
 WIKI_HOST=107.155.15.79
 EOF
@@ -161,6 +167,8 @@ docker logs panda-wiki 2>&1 | tail -20
 # 测试 HTTP 访问
 curl -sI http://localhost:8900
 curl -sI http://localhost:8005
+curl -sI http://localhost:8006
+curl -sI http://localhost:8007
 ```
 
 ### 步骤 6：访问 Wiki
@@ -170,7 +178,9 @@ curl -sI http://localhost:8005
 | 入口 | 地址 |
 |------|-----|
 | 管理后台 | `http://<服务器IP>:8900` |
-| Wiki 前台站点 | `http://<服务器IP>:8005` |
+| Wiki 前台站点 1 | `http://<服务器IP>:8005` |
+| Wiki 前台站点 2 | `http://<服务器IP>:8006` |
+| Wiki 前台站点 3 | `http://<服务器IP>:8007` |
 
 | 项目 | 值 |
 |------|-----|
@@ -275,7 +285,10 @@ curl -fsSL https://raw.githubusercontent.com/baiqiqingshu/PandaWiki/main/docker-
 # 生成 .env
 cat > .env << EOF
 ADMIN_PORT=8900
-WIKI_SITE_PORT=8005
+WIKI_SITE_PORTS=8005,8006,8007
+WIKI_PORT_1=8005
+WIKI_PORT_2=8006
+WIKI_PORT_3=8007
 ADMIN_PASSWORD=${ADMIN_PWD}
 POSTGRES_PASSWORD=$(openssl rand -hex 16)
 REDIS_PASSWORD=
@@ -295,7 +308,9 @@ docker compose up -d
 echo ""
 echo "=== 部署完成 ==="
 echo "管理后台: http://$(hostname -I | awk '{print $1}'):8900"
-echo "Wiki 前台: http://$(hostname -I | awk '{print $1}'):8005"
+echo "Wiki 前台(站点1): http://$(hostname -I | awk '{print $1}'):8005"
+echo "Wiki 前台(站点2): http://$(hostname -I | awk '{print $1}'):8006"
+echo "Wiki 前台(站点3): http://$(hostname -I | awk '{print $1}'):8007"
 echo "账号: admin"
 echo "密码: ${ADMIN_PWD}"
 ```

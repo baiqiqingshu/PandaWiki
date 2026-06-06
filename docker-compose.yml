@@ -8,7 +8,11 @@ services:
     restart: unless-stopped
     ports:
       - "${ADMIN_PORT:-8900}:80"
-      - "${WIKI_SITE_PORT:-8005}:${WIKI_SITE_PORT:-8005}"
+      # Wiki 前台站点端口（支持多个，每行一个映射）
+      # 使用 WIKI_SITE_PORTS 指定逗号分隔的端口列表，所有端口都需要在这里映射
+      - "${WIKI_PORT_1:-8005}:${WIKI_PORT_1:-8005}"
+      - "${WIKI_PORT_2:-8006}:${WIKI_PORT_2:-8006}"
+      - "${WIKI_PORT_3:-8007}:${WIKI_PORT_3:-8007}"
     environment:
       # PostgreSQL
       - PG_DSN=host=panda-wiki-postgres user=panda-wiki password=${POSTGRES_PASSWORD:-panda-wiki-secret} dbname=panda-wiki port=5432 sslmode=disable TimeZone=Asia/Shanghai
@@ -30,9 +34,11 @@ services:
       - SENTRY_ENABLED=false
       # RAG Provider (fts=PostgreSQL full-text search, noop=disable search, ct=CT RAG)
       - RAG_PROVIDER=${RAG_PROVIDER:-fts}
-      # Wiki 站点自动初始化
+      # Wiki 前台站点端口列表（逗号分隔，nginx 会同时监听所有端口）
+      - WIKI_SITE_PORTS=${WIKI_SITE_PORTS:-8005,8006,8007}
+      # Wiki 站点自动初始化（仅首次无知识库时创建示例站点）
       - WIKI_NAME=${WIKI_NAME:-PandaWiki}
-      - WIKI_SITE_PORT=${WIKI_SITE_PORT:-8005}
+      - WIKI_SITE_PORT=${WIKI_PORT_1:-8005}
       - WIKI_HOST=${WIKI_HOST:-0.0.0.0}
       # 日志级别 (-4=debug, 0=info, 4=warn, 8=error)
       - LOG_LEVEL=${LOG_LEVEL:-0}
