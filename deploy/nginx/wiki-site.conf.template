@@ -10,7 +10,7 @@
 #
 # 多端口支持：
 #   entrypoint.sh 会将 WIKI_SITE_PORTS 中的每个端口生成一行 listen 指令，
-#   替换下面的 ##LISTEN_DIRECTIVES## 占位符。
+#   替换下面的 LISTEN_DIRECTIVES 占位符。
 #   所有端口共用同一 server 块，通过 $server_port 传递实际端口给后端解析。
 # ============================================================
 
