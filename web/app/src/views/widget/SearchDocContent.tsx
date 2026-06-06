@@ -380,7 +380,7 @@ const SearchDocContent: React.FC<SearchDocContentProps> = ({
                     {result.emoji || <IconWenjian />} {result.name}
                   </Typography>
 
-                  {/* 描述 */}
+                  {/* 描述 - 使用 dangerouslySetInnerHTML 渲染搜索高亮 */}
                   <Typography
                     variant='body2'
                     sx={{
@@ -390,10 +390,18 @@ const SearchDocContent: React.FC<SearchDocContentProps> = ({
                       textOverflow: 'ellipsis',
                       overflow: 'hidden',
                       whiteSpace: 'nowrap',
+                      '& mark': {
+                        backgroundColor: 'transparent',
+                        color: 'primary.main',
+                        fontWeight: 600,
+                      },
                     }}
-                  >
-                    {result.summary || '暂无摘要'}
-                  </Typography>
+                    dangerouslySetInnerHTML={{
+                      __html: result.summary
+                        ? result.summary.replace(/<(?!\/?mark>)[^>]+>/gi, '')
+                        : '暂无摘要',
+                    }}
+                  />
                 </Stack>
                 <IconMianbaoxie sx={{ fontSize: 12 }} />
               </StyledSearchResultItem>

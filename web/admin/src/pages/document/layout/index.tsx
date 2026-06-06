@@ -324,6 +324,7 @@ const Content = () => {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         navList={navList}
+        navId={nav_id || ''}
         refresh={refresh}
       />
     </>

@@ -89,7 +89,11 @@ const CardRobotWebComponent = ({ kb }: CardRobotWebComponentProps) => {
       return;
     }
     const host = kb.access_settings?.hosts?.[0] || '';
-    if (host === '') return;
+    if (host === '') {
+      // 未配置域名时，使用当前页面的 origin 作为挂件 URL
+      setUrl(window.location.origin);
+      return;
+    }
     const { ssl_ports = [], ports = [] } = kb.access_settings || {};
 
     if (ssl_ports) {
@@ -98,6 +102,8 @@ const CardRobotWebComponent = ({ kb }: CardRobotWebComponentProps) => {
     } else if (ports) {
       if (ports.includes(80)) setUrl(`http://${host}`);
       else if (ports.length > 0) setUrl(`http://${host}:${ports[0]}`);
+    } else {
+      setUrl(window.location.origin);
     }
   }, [kb]);
 

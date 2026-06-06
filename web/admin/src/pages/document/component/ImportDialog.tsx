@@ -24,13 +24,14 @@ import {
   CloudUploadOutlined,
   Close,
 } from '@mui/icons-material';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { V1NavListResp } from '@/request/types';
 
 interface ImportDialogProps {
   open: boolean;
   onClose: () => void;
   navList: V1NavListResp[];
+  navId?: string;
   refresh: () => void;
 }
 
@@ -38,16 +39,24 @@ const ImportDialog = ({
   open,
   onClose,
   navList,
+  navId: currentNavId,
   refresh,
 }: ImportDialogProps) => {
   const kb_id = useAppSelector(state => state.config.kb_id);
   const [file, setFile] = useState<File | null>(null);
-  const [navId, setNavId] = useState<string>('');
+  const [navId, setNavId] = useState<string>(currentNavId || '');
   const [conflictStrategy, setConflictStrategy] = useState<
     'skip' | 'overwrite' | 'rename'
   >('skip');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+
+  // 打开对话框时，默认选中当前所在的目录
+  useEffect(() => {
+    if (open) {
+      setNavId(currentNavId || '');
+    }
+  }, [open, currentNavId]);
 
   const selectFile = useCallback((nextFile: File) => {
     if (!nextFile.name.toLowerCase().endsWith('.zip')) {
@@ -103,7 +112,7 @@ const ImportDialog = ({
   const handleClose = () => {
     setFile(null);
     setResult(null);
-    setNavId('');
+    setNavId(currentNavId || '');
     setConflictStrategy('skip');
     onClose();
   };

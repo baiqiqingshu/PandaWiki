@@ -90,7 +90,12 @@ func (s *PgFTSRAG) QueryRecords(ctx context.Context, req *QueryRecordsRequest) (
 			nr.node_id,
 			nr.name,
 			LEFT(sc.search_content, 2000) as content,
-			'' as match_snippet,
+			CASE 
+				WHEN COALESCE(nr.search_vector, ''::tsvector) @@ plainto_tsquery('simple', ?)
+				THEN ts_headline('simple', LEFT(sc.search_content, 5000), plainto_tsquery('simple', ?),
+					'StartSel=<mark>, StopSel=</mark>, MaxFragments=1, MaxWords=40, MinWords=20, FragmentDelimiter= ... ')
+				ELSE ''
+			END as match_snippet,
 			(
 				ts_rank_cd(COALESCE(nr.search_vector, ''::tsvector), plainto_tsquery('simple', ?)) * 100 +
 				CASE WHEN nr.name ILIKE ? THEN 10 ELSE 0 END +
@@ -112,6 +117,8 @@ func (s *PgFTSRAG) QueryRecords(ctx context.Context, req *QueryRecordsRequest) (
 
 	likePattern := "%" + query + "%"
 	args := []interface{}{
+		query,       // ts_headline tsquery
+		query,       // ts_headline tsquery (2nd)
 		query,       // ts_rank_cd
 		likePattern, // name ILIKE score
 		likePattern, // summary ILIKE score
@@ -181,7 +188,7 @@ func (s *PgFTSRAG) QueryRecords(ctx context.Context, req *QueryRecordsRequest) (
 			continue
 		}
 		content := normalizeSearchText(r.Content)
-		snippet := normalizeSearchText(r.MatchSnippet)
+		snippet := normalizeSnippetText(r.MatchSnippet)
 		// 如果 ts_headline 没有返回结果（ILIKE 命中的情况），手动从 content 中提取匹配段落
 		if snippet == "" && r.Content != "" {
 			snippet = s.extractSnippet(content, query, 150)
@@ -208,6 +215,25 @@ func normalizeSearchText(content string) string {
 	cleaned = urlPattern.ReplaceAllString(cleaned, " ")
 	cleaned = htmlTagPattern.ReplaceAllString(cleaned, " ")
 	cleaned = whitespacePattern.ReplaceAllString(cleaned, " ")
+	return strings.TrimSpace(cleaned)
+}
+
+// normalizeSnippetText 清洗 ts_headline 返回的片段，但保留 <mark> 高亮标签
+func normalizeSnippetText(content string) string {
+	if content == "" {
+		return ""
+	}
+	// 先用占位符保护 <mark> 标签，避免被 htmlTagPattern 移除
+	const markStart = "\x00MARKSTART\x00"
+	const markEnd = "\x00MARKEND\x00"
+	protected := strings.ReplaceAll(content, "<mark>", markStart)
+	protected = strings.ReplaceAll(protected, "</mark>", markEnd)
+
+	cleaned := normalizeSearchText(protected)
+
+	// 恢复 <mark> 标签
+	cleaned = strings.ReplaceAll(cleaned, markStart, "<mark>")
+	cleaned = strings.ReplaceAll(cleaned, markEnd, "</mark>")
 	return strings.TrimSpace(cleaned)
 }
 

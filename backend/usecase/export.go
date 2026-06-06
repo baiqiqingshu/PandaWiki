@@ -650,6 +650,13 @@ func (u *ExportUsecase) buildExportPath(node *domain.Node, nodeMap map[string]*d
 	}
 
 	parts = append(parts, pathParts...)
+
+	// 如果当前节点本身是文件夹，则把它自己的名字也加入路径，
+	// 这样文件夹的 _folder.meta.json 与其子节点位于同一目录，保留层级结构
+	if node.Type == domain.NodeTypeFolder {
+		parts = append(parts, sanitizeFilename(node.Name))
+	}
+
 	return filepath.ToSlash(filepath.Join(parts...))
 }
 
