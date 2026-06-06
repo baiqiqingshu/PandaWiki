@@ -456,6 +456,7 @@ type WidgetBotSettings struct {
 	Disclaimer           string   `json:"disclaimer,omitempty"`
 	CopyrightInfo        string   `json:"copyright_info,omitempty"`
 	CopyrightHideEnabled bool     `json:"copyright_hide_enabled,omitempty"`
+	CatalogVisible       bool     `json:"catalog_visible,omitempty"`
 }
 
 type BrandGroup struct {

@@ -1,5 +1,4 @@
 'use client';
-import { WidgetInfo } from '@/assets/type';
 import { useStore } from '@/provider';
 import {
   alpha,
@@ -12,10 +11,11 @@ import {
   Tabs,
   Typography,
 } from '@mui/material';
-import { IconJinsousuo, IconZhinengwenda } from '@panda-wiki/icons';
+import { IconJinsousuo, IconMulu, IconZhinengwenda } from '@panda-wiki/icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AiQaContent from './AiQaContent';
 import SearchDocContent from './SearchDocContent';
+import WidgetCatalog from './WidgetCatalog';
 
 const StyledTabs = styled(Tabs)(({ theme }) => ({
   minHeight: 'auto',
@@ -68,9 +68,7 @@ const Widget = () => {
     return widget?.settings?.widget_bot_settings?.search_mode || 'all';
   }, [widget]);
 
-  const [searchMode, setSearchMode] = useState<
-    WidgetInfo['settings']['widget_bot_settings']['search_mode']
-  >(() => {
+  const [searchMode, setSearchMode] = useState<'qa' | 'doc' | 'catalog'>(() => {
     if (defaultSearchMode === 'qa') return 'qa';
     if (defaultSearchMode === 'doc') return 'doc';
     // search_mode === 'all': 优先从浏览器缓存恢复用户上次的选择
@@ -92,6 +90,11 @@ const Widget = () => {
 
   const hotSearch = useMemo(() => {
     return widget?.settings?.widget_bot_settings?.recommend_questions || [];
+  }, [widget]);
+
+  // 是否展示文档目录标签页
+  const catalogVisible = useMemo(() => {
+    return !!widget?.settings?.widget_bot_settings?.catalog_visible;
   }, [widget]);
 
   // modal打开时自动聚焦
@@ -132,36 +135,53 @@ const Widget = () => {
           pb: 2.5,
         }}
       >
-        {defaultSearchMode === 'all' ? (
+        {defaultSearchMode === 'all' || catalogVisible ? (
           <StyledTabs
             value={searchMode}
             onChange={(_, value) => {
-              setSearchMode(value as 'qa' | 'doc');
-              try {
-                localStorage.setItem(SEARCH_TAB_CACHE_KEY, value as string);
-              } catch {}
+              setSearchMode(value as 'qa' | 'doc' | 'catalog');
+              if (value === 'qa' || value === 'doc') {
+                try {
+                  localStorage.setItem(SEARCH_TAB_CACHE_KEY, value as string);
+                } catch {}
+              }
             }}
             variant='scrollable'
             scrollButtons={false}
           >
-            <StyledTab
-              label={
-                <Stack direction='row' gap={0.5} alignItems='center'>
-                  <IconZhinengwenda sx={{ fontSize: 16 }} />
-                  {!mobile && <span>智能问答</span>}
-                </Stack>
-              }
-              value='qa'
-            />
-            <StyledTab
-              label={
-                <Stack direction='row' gap={0.5} alignItems='center'>
-                  <IconJinsousuo sx={{ fontSize: 16 }} />
-                  {!mobile && <span>仅搜索文档</span>}
-                </Stack>
-              }
-              value='doc'
-            />
+            {(defaultSearchMode === 'all' || defaultSearchMode === 'qa') && (
+              <StyledTab
+                label={
+                  <Stack direction='row' gap={0.5} alignItems='center'>
+                    <IconZhinengwenda sx={{ fontSize: 16 }} />
+                    {!mobile && <span>智能问答</span>}
+                  </Stack>
+                }
+                value='qa'
+              />
+            )}
+            {(defaultSearchMode === 'all' || defaultSearchMode === 'doc') && (
+              <StyledTab
+                label={
+                  <Stack direction='row' gap={0.5} alignItems='center'>
+                    <IconJinsousuo sx={{ fontSize: 16 }} />
+                    {!mobile && <span>搜索文档</span>}
+                  </Stack>
+                }
+                value='doc'
+              />
+            )}
+            {catalogVisible && (
+              <StyledTab
+                label={
+                  <Stack direction='row' gap={0.5} alignItems='center'>
+                    <IconMulu sx={{ fontSize: 16 }} />
+                    {!mobile && <span>文档目录</span>}
+                  </Stack>
+                }
+                value='catalog'
+              />
+            )}
           </StyledTabs>
         ) : (
           <Box></Box>
@@ -208,6 +228,19 @@ const Widget = () => {
       >
         <SearchDocContent inputRef={inputRef} placeholder={placeholder} />
       </Box>
+      {catalogVisible && (
+        <Box
+          sx={{
+            px: 3,
+            flex: 1,
+            overflow: 'hidden',
+            display: searchMode === 'catalog' ? 'flex' : 'none',
+            flexDirection: 'column',
+          }}
+        >
+          <WidgetCatalog />
+        </Box>
+      )}
       {!widget?.settings?.widget_bot_settings?.copyright_hide_enabled &&
         widget?.settings?.widget_bot_settings?.copyright_info && (
           <Box

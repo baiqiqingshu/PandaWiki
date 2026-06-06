@@ -1476,6 +1476,7 @@ export interface DomainWidgetBotSettings {
   recommend_questions?: string[];
   search_mode?: string;
   default_search_tab?: string;
+  catalog_visible?: boolean;
   theme_mode?: string;
 }
 

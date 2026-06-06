@@ -123,6 +123,7 @@ export type WidgetInfo = {
       theme_mode?: string;
       search_mode?: string;
       default_search_tab?: string;
+      catalog_visible?: boolean;
       placeholder?: string;
       disclaimer?: string;
       copyright_hide_enabled?: boolean;

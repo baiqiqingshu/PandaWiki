@@ -61,6 +61,7 @@ const CardRobotWebComponent = ({ kb }: CardRobotWebComponentProps) => {
       copyright_info: '',
       search_mode: 'all',
       default_search_tab: 'doc',
+      catalog_visible: '0',
       placeholder: '',
       recommend_questions: [] as string[],
       // recommend_node_ids: [] as string[],
@@ -122,6 +123,7 @@ const CardRobotWebComponent = ({ kb }: CardRobotWebComponentProps) => {
         modal_position: widget?.modal_position || 'follow',
         search_mode: widget?.search_mode || 'all',
         default_search_tab: widget?.default_search_tab || 'doc',
+        catalog_visible: widget?.catalog_visible === true ? '1' : '0',
         placeholder: widget?.placeholder || '',
         disclaimer: widget?.disclaimer || '',
         copyright_hide_enabled:
@@ -146,6 +148,7 @@ const CardRobotWebComponent = ({ kb }: CardRobotWebComponentProps) => {
             is_open: data.is_open === 1 ? true : false,
             copyright_hide_enabled:
               data.copyright_hide_enabled === '1' ? true : false,
+            catalog_visible: data.catalog_visible === '1' ? true : false,
           },
         },
       },
@@ -592,6 +595,37 @@ const CardRobotWebComponent = ({ kb }: CardRobotWebComponentProps) => {
                         />
                       </FormItem>
                     )}
+                    <FormItem
+                      label='文档目录'
+                      sx={{ alignItems: 'flex-start' }}
+                      labelSx={{ mt: 1 }}
+                    >
+                      <Controller
+                        control={control}
+                        name='catalog_visible'
+                        render={({ field }) => (
+                          <RadioGroup
+                            row
+                            {...field}
+                            onChange={e => {
+                              field.onChange(e.target.value);
+                              setIsEdit(true);
+                            }}
+                          >
+                            <FormControlLabel
+                              value='1'
+                              control={<Radio size='small' />}
+                              label={<Box sx={{ width: 100 }}>显示</Box>}
+                            />
+                            <FormControlLabel
+                              value='0'
+                              control={<Radio size='small' />}
+                              label={<Box sx={{ width: 100 }}>隐藏</Box>}
+                            />
+                          </RadioGroup>
+                        )}
+                      />
+                    </FormItem>
                     <FormItem
                       label='搜索提示'
                       sx={{ alignItems: 'flex-start' }}
